@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.glsx.neshield.modules.mapper.OrganizationMapper">
+    <resultMap id="BaseResultMap" type="cn.com.glsx.neshield.modules.entity.Organization">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="superior_id" jdbcType="INTEGER" property="superiorId"/>
+        <result column="sub_id" jdbcType="INTEGER" property="subId"/>
+        <result column="depth" jdbcType="INTEGER" property="depth"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
+        <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
+        <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
+        <result column="updated_date" jdbcType="TIMESTAMP" property="updatedDate"/>
+        <result column="updated_by" jdbcType="INTEGER" property="updatedBy"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        id, superior_id, sub_id, `depth`, tenant_id, del_flag,
+        created_date, created_by, updated_date, updated_by
+    </sql>
+    <insert id="insertOrganizationPath">
+        insert into t_organization (superior_id, sub_id, depth, tenant_id, created_date, created_by,
+        updated_date, updated_by)
+        select tor.superior_id, #{subId}, tor.depth+1, #{tenantId}, #{createdDate}, #{createdBy},
+         #{updatedDate},#{updatedBy}
+         from t_organization as tor
+        where tor.sub_id = #{superiorId}
+        union all select #{subId}, #{subId}, 0, #{tenantId}, #{createdDate}, #{createdBy},
+         #{updatedDate},#{updatedBy};
+    </insert>
+    <insert id="insertRootPath">
+        insert into t_organization (superior_id, sub_id, depth, tenant_id, created_date,
+        created_by, updated_date, updated_by)
+        values (#{departmentId}, #{departmentId}, 0, #{tenantId}, #{createdDate}, #{createdBy},
+        #{updatedDate}, #{updatedBy})
+    </insert>
+    <delete id="deleteOrganizationPath">
+        delete a from t_organization a join t_organization b on (a.sub_id = b.sub_id)
+        where b.superior_id=#{nodeId};
+    </delete>
+    <!--    <select id="getUserDepartmentId" resultType="java.lang.Long">-->
+    <!--        select superior_id-->
+    <!--        from t_organization-->
+    <!--        where sub_id = #{userId} and del_flag = 0-->
+    <!--        and depth = (-->
+    <!--            select min(depth)-->
+    <!--            from t_organization-->
+    <!--            where sub_id = #{userId} and del_flag = 0-->
+    <!--        )-->
+    <!--    </select>-->
+    <!--    <select id="getUserSubDepartment" resultType="java.lang.Long">-->
+    <!--        select sub_id-->
+    <!--        from t_organization-->
+    <!--        where superior_id = #{userId} and type = 1 and del_flag = 0-->
+    <!--        and depth = (-->
+    <!--            select min(depth)-->
+    <!--            from t_organization-->
+    <!--            where superior_id = #{userId} and type = 1 and del_flag = 0-->
+    <!--        )-->
+    <!--    </select>-->
+    <!--    <select id="getUserSuperiorUser" resultType="java.lang.Long">-->
+    <!--        select superior_id-->
+    <!--        from t_organization-->
+    <!--        where sub_id = #{userId} and type = 0 and del_flag = 0-->
+    <!--        and depth = (-->
+    <!--            select max(depth)-->
+    <!--            from t_organization-->
+    <!--            where sub_id = #{userId} and type = 0 and del_flag = 0 order by depth limit 2-->
+    <!--        )-->
+    <!--    </select>-->
+
+    <select id="selectOrgList" resultType="cn.com.glsx.neshield.modules.model.OrgModel">
+        select tor.sub_id id,max(tor.superior_id) parentId,min(tor2.superior_id) superiorId,max(tor.depth) depth,
+        tt.id tenantId,tt.tenant_name tenantName,td.id deptId,td.department_name deptName
+        from t_organization tor,t_organization tor2
+        left join t_department td on tor2.sub_id = td.id
+        left join t_user tu on tor2.sub_id = tu.id
+        left join t_tenant tt on tor2.tenant_id = tt.id
+        where tor.id = tor2.id
+        and tt.id = tor.tenant_id
+        <if test="orgName != null">
+            and tor.sub_id in
+            <foreach collection="orgIds" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        group by tor.sub_id
+        <if test="orgId != null">
+            having min(tor2.superior_id) = orgId
+        </if>
+        order by max(tor.superior_id),max(tor.depth),tor.sub_id
+    </select>
+
+    <select id="selectOrgTree" resultType="cn.com.glsx.neshield.modules.model.OrgModel">
+        select tor.sub_id id,max(tor.superior_id) parentId,min(tor2.superior_id) superiorId,max(tor.depth) depth,
+        tt.id tenantId,tt.tenant_name tenantName,td.id deptId,td.department_name deptName
+        from t_organization tor,t_organization tor2
+        left join t_department td on tor2.sub_id = td.id
+        left join t_user tu on tor2.sub_id = tu.id
+        left join t_tenant tt on tor2.tenant_id = tt.id
+        where tor.id = tor2.id
+        and tt.id = tor.tenant_id
+        <if test="orgName != null">
+            and tor.sub_id in
+            <foreach collection="orgIds" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        group by tor.sub_id
+        <if test="orgId != null">
+            having min(tor2.superior_id) = orgId
+        </if>
+        order by max(tor.superior_id),max(tor.depth),tor.sub_id
+    </select>
+
+    <select id="selectSuperiorIdsByName" resultType="java.lang.String">
+        select concat(group_concat(to1.superior_id),',',to1.sub_id) ids
+        from t_department td1, t_organization to1
+        where td1.id = to1.sub_id
+        and department_name LIKE CONCAT('%',#{name},'%')
+        group by to1.sub_id
+    </select>
+    <select id="selectByRootId" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"></include> from t_organization
+        where del_flag = 0 and superior_id = #{organizationId}
+    </select>
+
+    <select id="selectRootPath" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"></include> from t_organization
+        where sub_id = #{organizationId} and del_flag = 0
+        and depth = (
+        select max(depth)
+        from t_organization
+        where sub_id = #{organizationId} and del_flag = 0
+        )
+    </select>
+
+    <select id="selectRootIdList" resultType="cn.com.glsx.neshield.modules.entity.Organization">
+        select max(depth) depth, superior_id superiorId, sub_id subId from t_organization
+        where del_flag = 0 and sub_id in
+        <foreach collection="subIdList" separator="," open="(" close=")" item="subId">
+            #{subId}
+        </foreach>
+        group by sub_id
+    </select>
+
+    <select id="selectSuperiorOrganization" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"></include> from t_organization
+        where sub_id = #{organizationId} and del_flag = 0
+        and depth = 1
+    </select>
+    <select id="selectChildrenList" resultType="cn.com.glsx.neshield.modules.entity.Department"
+            parameterType="cn.com.glsx.neshield.modules.model.param.OrganizationSearch">
+        select tde.id id, tde.department_name departmentName, order_num orderNum
+        tde.created_date createdDate, tde.enable_status enableStatus
+        from t_organization tor, t_department tde
+        where tor.sub_id = tde.id and tor.del_flag = 0 and tde.del_flag = 0
+        and tor.superior_id = #{rootId} and tor.depth = 1
+        <if test="organizationName != null">
+            and tde.department_name like CONCAT('%',#{organizationName},'%')
+        </if>
+        <if test="enableStatus != null">
+            and tde.enable_status = #{enableStatus}
+        </if>
+    </select>
+    <select id="selectSubList" resultType="cn.com.glsx.neshield.modules.entity.Organization">
+        select
+        distinct(sub_id) subId, superior_id superiorId
+        from t_organization
+        where del_flag = 0
+        and superior_id in
+        <foreach collection="departmentIds" item="departmentId" open="(" close=")" separator=",">
+            #{departmentId}
+        </foreach>
+        <if test="depth != null">
+            and depth = #{depth}
+        </if>
+    </select>
+    <select id="selectList" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"></include>
+        from t_organization
+        where del_flag = 0
+        <if test="subIdList != null">
+            and sub_id in
+            <foreach collection="subIdList" item="subId" open="(" close=")" separator=",">
+                #{subId}
+            </foreach>
+        </if>
+        <if test="superiorIdList != null">
+            and superior_id in
+            <foreach collection="superiorIdList" item="superiorId" open="(" close=")" separator=",">
+                #{superiorId}
+            </foreach>
+        </if>
+        <if test="biggerDepth != null">
+            and depth >= #{biggerDepth}
+        </if>
+    </select>
+
+    <update id="logicDeleteAllSubOrganization">
+        update org from t_organization org join t_organization b on (org.sub_id = b.sub_id) where b.superior_id=#{organizationId};
+    </update>
+</mapper>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.glsx.neshield.modules.mapper.DevicePermitMapper">
+  <resultMap id="BaseResultMap" type="cn.com.glsx.neshield.modules.entity.DevicePermit">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="accorder_id" jdbcType="INTEGER" property="accorderId" />
+    <result column="receiver_id" jdbcType="INTEGER" property="receiverId" />
+    <result column="content_type" jdbcType="TINYINT" property="contentType" />
+    <result column="permit_type" jdbcType="TINYINT" property="permitType" />
+    <result column="del_flag" jdbcType="TINYINT" property="delFlag" />
+    <result column="created_date" jdbcType="TIMESTAMP" property="createdDate" />
+    <result column="created_by" jdbcType="INTEGER" property="createdBy" />
+    <result column="updated_date" jdbcType="TIMESTAMP" property="updatedDate" />
+    <result column="updated_by" jdbcType="INTEGER" property="updatedBy" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    id, accorder_id, receiver_id, content_type, permit_type, del_flag, created_date, 
+    created_by, updated_date, updated_by
+  </sql>
+</mapper>

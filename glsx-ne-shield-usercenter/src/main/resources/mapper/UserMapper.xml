@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.glsx.neshield.modules.mapper.UserMapper">
+    <resultMap id="BaseResultMap" type="cn.com.glsx.neshield.modules.entity.User">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="username" jdbcType="VARCHAR" property="username"/>
+        <result column="account" jdbcType="VARCHAR" property="account"/>
+        <result column="password" jdbcType="VARCHAR" property="password"/>
+        <result column="phone_number" jdbcType="VARCHAR" property="phoneNumber"/>
+        <result column="portrait" jdbcType="VARCHAR" property="portrait"/>
+        <result column="email" jdbcType="VARCHAR" property="email"/>
+        <result column="gender" jdbcType="INTEGER" property="gender"/>
+        <result column="position_" jdbcType="INTEGER" property="position"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="department_id" jdbcType="INTEGER" property="departmentId"/>
+        <result column="superior_id" jdbcType="INTEGER" property="superiorId"/>
+        <result column="salt" jdbcType="VARCHAR" property="salt"/>
+        <result column="enable_status" jdbcType="INTEGER" property="enableStatus"/>
+        <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
+        <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
+        <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
+        <result column="updated_date" jdbcType="TIMESTAMP" property="updatedDate"/>
+        <result column="updated_by" jdbcType="INTEGER" property="updatedBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, account, `password`, phone_number,
+        portrait, email, gender, position, salt,
+        tenant_id, department_id, superior_id, del_flag, enable_status,
+        created_date, created_by, updated_date, updated_by
+    </sql>
+
+    <select id="selectByAccount" parameterType="java.lang.String" resultMap="BaseResultMap">
+        select * from t_user
+        where account = #{account}
+        and del_flag = 0
+    </select>
+
+    <select id="selectCntByAccount" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(account) from t_user
+        where account = #{account}
+        and del_flag = 0
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap" parameterType="cn.com.glsx.neshield.modules.model.param.UserSearch">
+        select
+        <include refid="Base_Column_List"></include>
+        from t_user where del_flag = 0
+        <if test="searchField != null">
+            and (
+            account like CONCAT('%',#{searchField},'%')
+            or
+            phone_number like CONCAT('%',#{searchField},'%')
+            or
+            username like CONCAT('%',#{searchField},'%')
+            or
+            id = #{searchField}
+            )
+        </if>
+        <if test="userStatus != null">
+            and enable_status = #{userStatus}
+        </if>
+        <if test="departmentId != null">
+            and department_id = #{departmentId}
+        </if>
+        <if test="departmentIdList != null">
+            and department_id in
+            <foreach collection="departmentIdList" item="departmentId" open="(" close=")" separator=",">
+                #{departmentId}
+            </foreach>
+        </if>
+        <if test="userId != null">
+            and user_id = #{userId}
+        </if>
+    </select>
+
+    <update id="logicDeleteById">
+    update t_user set del_flag = -1 where id = #{id}
+  </update>
+
+    <select id="countByCriterial" parameterType="cn.com.glsx.neshield.modules.model.param.UserBO" resultMap="BaseResultMap">
+        select count(*) from t_user
+        where del_flag = 0
+        <if test="departmentIds != null and departmentIds.size() > 0">
+            and department_id in
+            <foreach collection="departmentIds" item="departmentId" open="(" close=")" separator=",">
+                #{departmentId}
+            </foreach>
+        </if>
+        <if test="departmentId != null">
+            and department_id = #{departmentId}
+        </if>
+    </select>
+    <select id="countDepartmentsUser" resultType="cn.com.glsx.neshield.modules.model.view.DepartmentCount">
+        select department_id as departmentId, count(*) as userNumber from t_user
+        where del_flag = 0
+        <if test="departmentIdList != null and departmentIdList.size() > 0">
+            and department_id in
+            <foreach collection="departmentIdList" item="departmentId" open="(" close=")" separator=",">
+                #{departmentId}
+            </foreach>
+        </if>
+        group by department_id
+    </select>
+    <select id="selectDepartmentsSubordinate" resultType="cn.com.glsx.neshield.modules.entity.User">
+        select tu.id id, tu.account account, tu.username username, tu.department_id departmentId,
+        tu.phone_number phoneNumber, tu.enable_status enableStatus, tu.created_date createdDate
+        from t_user tu, t_user_path tup
+        where tu.del_flag = 0 and tup.del_flag = 0 and tu.user_id = tup.sub_id
+        <if test="departmentList != null and departmentList.size() > 0">
+            and tu.department_id in
+            <foreach collection="departmentList" separator="," close=")" open="(" item="departmentId">
+                #{departmentId}
+            </foreach>
+        </if>
+        <if test="userId != null">
+            and tup.superior_id = #{userId}
+        </if>
+        <if test="search.searchField != null">
+            and (
+            tu.account like CONCAT('%',#{search.searchField},'%')
+            or
+            tu.phone_number like CONCAT('%',#{search.searchField},'%')
+            or
+            tu.username like CONCAT('%',#{search.searchField},'%')
+            or
+            tu.id = #{search.searchField}
+            )
+        </if>
+        <if test="search.userStatus != null">
+            and tu.enable_status = #{search.userStatus}
+        </if>
+    </select>
+
+</mapper>

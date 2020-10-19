@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.glsx.neshield.modules.mapper.MenuMapper">
+    <resultMap id="BaseResultMap" type="cn.com.glsx.neshield.modules.entity.Menu">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="menu_no" jdbcType="INTEGER" property="menuNo"/>
+        <result column="menu_name" jdbcType="VARCHAR" property="menuName"/>
+        <result column="front_route" jdbcType="VARCHAR" property="frontRoute"/>
+        <result column="permission_tag" jdbcType="VARCHAR" property="permissionTag"/>
+        <result column="parent_id" jdbcType="INTEGER" property="parentId"/>
+        <result column="type" jdbcType="TINYINT" property="type"/>
+        <result column="order_num" jdbcType="INTEGER" property="orderNum"/>
+        <result column="enable_status" jdbcType="TINYINT" property="enableStatus"/>
+        <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
+        <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
+        <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
+        <result column="updated_date" jdbcType="TIMESTAMP" property="updatedDate"/>
+        <result column="updated_by" jdbcType="INTEGER" property="updatedBy"/>
+    </resultMap>
+    <resultMap id="DTOResultMap" type="cn.com.glsx.neshield.modules.model.MenuDTO">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="menu_no" jdbcType="INTEGER" property="menuNo"/>
+        <result column="menu_name" jdbcType="VARCHAR" property="menuName"/>
+        <result column="front_route" jdbcType="VARCHAR" property="frontRoute"/>
+        <result column="permission_tag" jdbcType="VARCHAR" property="permissionTag"/>
+        <result column="parent_id" jdbcType="INTEGER" property="parentId"/>
+        <result column="type" jdbcType="TINYINT" property="type"/>
+        <result column="order_num" jdbcType="INTEGER" property="orderNum"/>
+        <result column="enable_status" jdbcType="TINYINT" property="enableStatus"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, menu_no, menu_name, front_route, permission_tag, parent_id, `type`, order_num, enable_status,
+        del_flag, created_date, created_by, updated_date, updated_by
+    </sql>
+
+    <update id="logicDeleteById">
+        update t_menu set del_flag = -1 where id = #{id}
+    </update>
+
+    <select id="selectList" resultMap="DTOResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_menu
+        where del_flag = 0
+        <if test="name != null and name != ''">
+            and name LIKE CONCAT('%',#{name},'%')
+        </if>
+        <if test="status != null">
+            and enable_status = #{status}
+        </if>
+        <choose>
+            <when test="parentId !=null">
+                and parent_id LIKE CONCAT(#{parentId},'%')
+            </when>
+            <otherwise>
+                and type = 1
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="selectMenuFullTree" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
+        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type
+        from t_menu m
+        where m.del_flag = 0
+        and m.enable_status = 1
+    </select>
+
+    <select id="selectMenuPermTree" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
+        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type
+        from t_menu m,t_role_menu rm
+        where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
+        <if test="roleIds != null and roleIds.size() > 0">
+            and rm.role_id in
+            <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+                #{roleId}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectMenuTreeByParentId" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
+        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type
+        from t_menu m,t_role_menu rm
+        where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
+        <if test="roleIds != null and roleIds.size() > 0">
+            and rm.role_id in
+            <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+                #{roleId}
+            </foreach>
+        </if>
+        and m.parent_id = #{parentId}
+    </select>
+
+    <select id="selectMenuList" resultMap="BaseResultMap">
+        select
+        m.id,
+        m.menu_no,
+        m.menu_name,
+        m.front_route,
+        m.permission_tag,
+        m.parent_id,
+        m.`type`,
+        m.order_num,
+        m.enable_status,
+        m.del_flag,
+        m.created_date,
+        m.created_by,
+        m.updated_date,
+        m.updated_by
+        from t_menu m,t_role_menu rm
+        where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
+        <if test="roleIds != null and roleIds.size() > 0">
+            and rm.role_id in
+            <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
+                #{roleId}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectMenuListByParentId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_menu where parent_id = #{parentId} and del_flag = 0
+    </select>
+
+    <select id="selectMenuListByLikeParentNo" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_menu where menu_no like #{parentMenuNo} and del_flag = 0
+    </select>
+</mapper>

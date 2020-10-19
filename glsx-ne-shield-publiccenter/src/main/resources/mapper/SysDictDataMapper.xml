@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.glsx.base.modules.mapper.SysDictDataMapper">
+    <resultMap id="BaseResultMap" type="cn.com.glsx.base.modules.entity.SysDictData">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="dict_sort" jdbcType="INTEGER" property="dictSort"/>
+        <result column="dict_label" jdbcType="VARCHAR" property="dictLabel"/>
+        <result column="dict_value" jdbcType="VARCHAR" property="dictValue"/>
+        <result column="dict_type" jdbcType="VARCHAR" property="dictType"/>
+        <result column="is_default" jdbcType="CHAR" property="isDefault"/>
+        <result column="enable_status" jdbcType="INTEGER" property="enableStatus"/>
+        <result column="del_flag" jdbcType="INTEGER" property="delFlag"/>
+        <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
+        <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
+        <result column="updated_by" jdbcType="INTEGER" property="updatedBy"/>
+        <result column="updated_date" jdbcType="TIMESTAMP" property="updatedDate"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+    </resultMap>
+
+    <resultMap id="DTOResultMap" type="cn.com.glsx.base.modules.model.DictDataDTO">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="dict_sort" jdbcType="INTEGER" property="dictSort"/>
+        <result column="dict_label" jdbcType="VARCHAR" property="dictLabel"/>
+        <result column="dict_value" jdbcType="VARCHAR" property="dictValue"/>
+        <result column="dict_type" jdbcType="VARCHAR" property="dictType"/>
+        <result column="is_default" jdbcType="CHAR" property="isDefault"/>
+        <result column="enable_status" jdbcType="INTEGER" property="enableStatus"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+        <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        id, dict_sort, dict_label, dict_value, dict_type, is_default, enable_status, del_flag,
+        created_by, created_date, updated_by, updated_date, remark
+    </sql>
+
+    <select id="selectByType" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_dict_data
+        where dict_type = #{type}
+    </select>
+
+    <select id="selectByType2" resultMap="DTOResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_dict_data
+        where dict_type = #{type}
+    </select>
+
+    <select id="selectList" resultMap="DTOResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_dict_data
+        where dict_type = #{type}
+        <if test="name != null and name != ''">
+            and name LIKE CONCAT('%',#{name},'%')
+        </if>
+        <if test="tag != null and tag != ''">
+            and dict_label LIKE CONCAT('%',#{tag},'%')
+        </if>
+        <if test="status != null">
+            and enable_status = #{status}
+        </if>
+        <if test="sDate != null and sDate != '' and eDate != null and eDate != ''">
+            and DATE_FORMAT(created_date, '%Y-%m-%d') &gt;= #{sDate}
+            and DATE_FORMAT(created_date, '%Y-%m-%d') &lt;= #{eDate}
+        </if>
+        order by id desc
+    </select>
+
+    <update id="logicDeleteById">
+        update t_dict_data set del_flag = -1 where id = #{id}
+    </update>
+</mapper>

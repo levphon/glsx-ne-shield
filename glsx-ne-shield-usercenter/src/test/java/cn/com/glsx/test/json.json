@@ -1,0 +1,148 @@
+{
+  "code": 200,
+  "data": [
+    {
+      "children": [
+        {
+          "children": [],
+          "id": 10101,
+          "origin": {
+            "menuNo": 10101,
+            "menuName": "用户管理",
+            "parentId": 101,
+            "orderNum": 1
+          },
+          "order": 1,
+          "depth": null,
+          "parentId": 101,
+          "label": "用户管理"
+        },
+        {
+          "children": [],
+          "id": 10102,
+          "origin": {
+            "menuNo": 10102,
+            "menuName": "用户管理",
+            "parentId": 101,
+            "orderNum": 2
+          },
+          "order": 2,
+          "depth": null,
+          "parentId": 101,
+          "label": "用户管理"
+        },
+        {
+          "children": [],
+          "id": 10103,
+          "origin": {
+            "menuNo": 10103,
+            "menuName": "角色管理",
+            "parentId": 101,
+            "orderNum": 3
+          },
+          "order": 3,
+          "depth": null,
+          "parentId": 101,
+          "label": "角色管理"
+        },
+        {
+          "children": [],
+          "id": 10104,
+          "origin": {
+            "menuNo": 10104,
+            "menuName": "菜单管理",
+            "parentId": 101,
+            "orderNum": 4
+          },
+          "order": 4,
+          "depth": null,
+          "parentId": 101,
+          "label": "菜单管理"
+        },
+        {
+          "children": [],
+          "id": 10105,
+          "origin": {
+            "menuNo": 10105,
+            "menuName": "组织管理",
+            "parentId": 101,
+            "orderNum": 5
+          },
+          "order": 5,
+          "depth": null,
+          "parentId": 101,
+          "label": "组织管理"
+        },
+        {
+          "children": [],
+          "id": 10106,
+          "origin": {
+            "menuNo": 10106,
+            "menuName": "字典管理",
+            "parentId": 101,
+            "orderNum": 6
+          },
+          "order": 6,
+          "depth": null,
+          "parentId": 101,
+          "label": "字典管理"
+        },
+        {
+          "children": [],
+          "id": 10107,
+          "origin": {
+            "menuNo": 10107,
+            "menuName": "操作日志",
+            "parentId": 101,
+            "orderNum": 7
+          },
+          "order": 7,
+          "depth": null,
+          "parentId": 101,
+          "label": "操作日志"
+        }
+      ],
+      "id": 101,
+      "origin": {
+        "menuNo": 101,
+        "menuName": "系统管理",
+        "parentId": 0,
+        "orderNum": 1
+      },
+      "order": 1,
+      "depth": null,
+      "parentId": 0,
+      "label": "系统管理"
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "id": 20101,
+          "origin": {
+            "menuNo": 20101,
+            "menuName": "ODB管理",
+            "parentId": 201,
+            "orderNum": 1
+          },
+          "order": 1,
+          "depth": null,
+          "parentId": 201,
+          "label": "ODB管理"
+        }
+      ],
+      "id": 201,
+      "origin": {
+        "menuNo": 201,
+        "menuName": "设备管理",
+        "parentId": 0,
+        "orderNum": 2
+      },
+      "order": 2,
+      "depth": null,
+      "parentId": 0,
+      "label": "设备管理"
+    }
+  ],
+  "message": "success"
+}

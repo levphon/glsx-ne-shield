@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.glsx.neshield.modules.mapper.RoleMapper">
+    <resultMap id="BaseResultMap" type="cn.com.glsx.neshield.modules.entity.Role">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="role_name" jdbcType="VARCHAR" property="roleName"/>
+        <result column="role_permission_type" jdbcType="TINYINT" property="rolePermissionType"/>
+        <result column="max_user" jdbcType="INTEGER" property="maxUser"/>
+        <result column="repel_roles" jdbcType="VARCHAR" property="repelRoles"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+        <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
+        <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
+        <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
+        <result column="updated_date" jdbcType="TIMESTAMP" property="updatedDate"/>
+        <result column="updated_by" jdbcType="INTEGER" property="updatedBy"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        id, role_name, role_permission_type, max_user, repel_roles,
+        remark, tenant_id, del_flag, created_date, created_by,
+        updated_date, updated_by
+    </sql>
+    <update id="logicDelete">
+        update t_role set del_flag = -1 where id = #{id}
+    </update>
+    <select id="selectList" resultMap="BaseResultMap" parameterType="cn.com.glsx.neshield.modules.model.param.RoleSearch">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role
+        where del_flag = 0
+        <if test="name != null">
+            and role_name like concat('%',#{name},'%')
+        </if>
+        order by id desc
+    </select>
+
+    <select id="selectRoleListByIds" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role
+        where del_flag = 0
+        <if test="roleIds != null">
+            and id in
+            <foreach collection="roleIds" open="(" close=")" separator="," item="roleId">
+                #{roleId}
+            </foreach>
+        </if>
+    </select>
+    <select id="selectUserRoleList" resultType="cn.com.glsx.neshield.modules.entity.Role">
+        select r.id id, r.role_name roleName, r.role_permission_type rolePermissionType
+        from t_role r, t_user_role_relation urr
+        where r.del_flag = 0 and urr.del_flag = 0 and r.role_id = urr.role_id
+        and urr.user_id = #{userId}
+    </select>
+
+</mapper>
