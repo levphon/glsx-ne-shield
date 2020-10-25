@@ -8,13 +8,13 @@ import javax.persistence.Table;
 
 @Data
 @Table(name = "t_permission")
-public class Permission extends BaseEntity {
+public class MenuPermission extends BaseEntity {
 
     /**
-     * 菜单id
+     * 菜单权限标识
      */
     @Column(name = "permission_tag")
-    private Integer permissionTag;
+    private String permissionTag;
 
     /**
      * 接口路径

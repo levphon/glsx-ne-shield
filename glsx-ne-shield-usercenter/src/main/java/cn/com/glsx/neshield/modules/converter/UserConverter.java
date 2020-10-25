@@ -1,7 +1,7 @@
 package cn.com.glsx.neshield.modules.converter;
 
 import cn.com.glsx.neshield.modules.entity.User;
-import cn.com.glsx.neshield.modules.model.UserDTO;
+import cn.com.glsx.neshield.modules.model.view.UserDTO;
 import cn.com.glsx.neshield.modules.model.param.UserBO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -28,12 +28,10 @@ public interface UserConverter {
 
     UserBO do2bo(User user);
 
-    @Mappings(
-            {
-                    @Mapping(source = "username", target = "username"),
-                    @Mapping(source = "id", target = "id"),
-            }
-    )
+    @Mappings({
+            @Mapping(source = "id", target = "id"),
+            @Mapping(source = "username", target = "username"),
+    })
     User bo2do(UserBO userBO);
 
 }

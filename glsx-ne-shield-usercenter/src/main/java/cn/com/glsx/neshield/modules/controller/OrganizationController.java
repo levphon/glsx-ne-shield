@@ -1,16 +1,23 @@
 package cn.com.glsx.neshield.modules.controller;
 
+import cn.com.glsx.neshield.modules.model.OrgModel;
+import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
+import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.service.DepartmentService;
 import cn.com.glsx.neshield.modules.service.OrganizationService;
-import com.glsx.plat.core.constant.ResultConstants;
+import com.glsx.plat.common.annotation.SysLog;
+import com.glsx.plat.common.enums.OperateType;
+import com.glsx.plat.common.model.TreeModel;
+import com.glsx.plat.context.utils.validator.AssertUtils;
 import com.glsx.plat.core.web.R;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.validation.Valid;
+import java.util.List;
 
 /**
  * @author: taoyr
@@ -20,69 +27,78 @@ import javax.annotation.Resource;
 @RequestMapping(value = "/organization")
 public class OrganizationController {
 
+    private final static String MODULE = "组织管理";
+
     @Resource
     private OrganizationService organizationService;
 
     @Resource
     private DepartmentService departmentService;
 
-    @RequestMapping("/add")
-    public R addOrganization(OrganizationBO organizationBO) {
-        if (organizationBO == null) {
-            return R.error(ResultConstants.ARGS_NULL);
-        }
-        if (organizationBO.getRootId() == null) {
-            return organizationService.addRootOrganization(organizationBO);
-        } else {
-            return organizationService.addNodeToOrganization(organizationBO);
-        }
+    @GetMapping("/search")
+    public R rootList(OrganizationSearch search) {
+        search.setForPage(true);
+        search.setHasChild(true);
+        search.setHasUserNumber(false);
+        List<DepartmentDTO> list = departmentService.rootDepartmentList(search);
+        return R.ok().data(list);
     }
 
-    @RequestMapping("/edit")
-    public R editOrganization(OrganizationBO organizationBO) {
-        if (organizationBO == null || organizationBO.getOrganizationId() == null) {
-            return R.error(ResultConstants.ARGS_NULL);
-        }
-
-        return organizationService.editOrganization(organizationBO);
+    @GetMapping("/children")
+    public R children(OrganizationSearch search) {
+        AssertUtils.isNull(search.getRootId(), "参数有误");
+        List<DepartmentDTO> list = organizationService.childrenList(search);
+        return R.ok().data(list);
     }
 
-    @RequestMapping("/delete")
-    public R deleteOrganization(Long organizationId) {
-        return organizationService.deleteOrganization(organizationId);
+    @GetMapping("/orgtree")
+    public R orgTree(OrgTreeSearch search) {
+        List<? extends TreeModel> list = organizationService.orgTree(search);
+        return R.ok().data(list);
     }
 
-    @RequestMapping("/info")
-    public R organizationInfo(Long organizationId) {
-        return organizationService.organizationInfo(organizationId);
-    }
-
-    @RequestMapping("/rootList")
-    public R rootList(OrganizationSearch organizationSearch) {
-        if (organizationSearch == null || organizationSearch.getPageSize() <= 0 || organizationSearch.getPageNumber() <= 0) {
-            return R.error(ResultConstants.ARGS_ERROR);
-        }
-        organizationSearch.setForPage(true);
-        return departmentService.rootDepartmentList(organizationSearch);
-    }
-
-    @RequestMapping("/children")
-    public R children(OrganizationSearch organizationSearch) {
-        if (organizationSearch == null || organizationSearch.getRootId() == null) {
-            return R.error(ResultConstants.ARGS_ERROR);
-        }
-
-        return organizationService.childrenList(organizationSearch);
-    }
-
-    @RequestMapping("/simpleList")
+    @GetMapping("/simplelist")
     public R simpleList(Long rootId) {
-        return organizationService.simpleList(rootId);
+        List<DepartmentDTO> simpleList = organizationService.simpleList(rootId);
+        return R.ok().data(simpleList);
     }
 
-    @RequestMapping("/treeOrg")
-    public R treeOrg(String departmentName){
-        return organizationService.treeOrg(departmentName);
+    @SysLog(module = MODULE, action = OperateType.ADD)
+    @PostMapping("/add")
+    public R addOrganization(@RequestBody @Valid OrganizationBO orgBO) {
+        if (orgBO.getSuperiorId() == null) {
+            organizationService.addRootOrganization(orgBO);
+        } else {
+            organizationService.addNodeToOrganization(orgBO);
+        }
+        return R.ok();
+    }
+
+    @SysLog(module = MODULE, action = OperateType.EDIT)
+    @PostMapping("/edit")
+    public R editOrganization(@RequestBody @Valid OrganizationBO orgBO) {
+        AssertUtils.isNull(orgBO.getOrganizationId(), "参数有误");
+        organizationService.editOrganization(orgBO);
+        return R.ok();
+    }
+
+    @SysLog(module = MODULE, action = OperateType.DELETE)
+    @GetMapping("/delete")
+    public R deleteOrganization(@RequestParam("id") Long organizationId) {
+        organizationService.deleteOrganization(organizationId);
+        return R.ok();
+    }
+
+    @GetMapping("/info")
+    public R organizationInfo(@RequestParam("id") Long organizationId) {
+        OrgModel orgModel = organizationService.organizationInfo(organizationId);
+        return R.ok().data(orgModel);
+    }
+
+    @GetMapping("/strategy")
+    public R rolePermission(@RequestParam("type") Integer rolePermissionType) {
+        organizationService.permissionStrategy(rolePermissionType);
+        return R.ok();
     }
 
 }

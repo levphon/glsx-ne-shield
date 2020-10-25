@@ -15,8 +15,12 @@ public class OrganizationSearch extends Page {
 
     private String organizationName;
 
-    private Long enableStatus;
+    private Integer enableStatus;
 
     private Long rootId;
+
+    private boolean hasChild;
+
+    private boolean hasUserNumber;
 
 }

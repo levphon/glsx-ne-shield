@@ -23,8 +23,8 @@ public class WebConfig implements WebMvcConfigurer {
         //3.所有的preHandle 执行完再执行全部postHandle 最后是postHandle
         registry.addInterceptor(authInterceptor).addPathPatterns("/**")
                 .excludePathPatterns("/")
-                .excludePathPatterns("/auth")
                 .excludePathPatterns("/login")
+                .excludePathPatterns("/captcha")
                 .excludePathPatterns("/actuator/**")
                 .excludePathPatterns("/api/**");
     }

@@ -9,29 +9,18 @@ public class OrgTreeModel implements TreeModel<OrgModel> {
 
     protected OrgModel org;
 
-    private Long userNumber;
-
-    private Long orderNum;
+    private Integer userNumber;
 
     private List<TreeModel> children = new ArrayList<>();
 
     public OrgTreeModel(OrgModel org) {
         this.org = org;
         this.userNumber = org.getUserNumber();
-        this.orderNum = org.getOrderNum();
-    }
-
-    public void setOrderNum(Long orderNum) {
-        this.orderNum = orderNum;
-    }
-
-    public Long getOrderNum() {
-        return orderNum;
     }
 
     @Override
     public Long getId() {
-        return org.getId();
+        return org.getOrgId();
     }
 
     @Override
@@ -39,17 +28,9 @@ public class OrgTreeModel implements TreeModel<OrgModel> {
         return org.getParentId();
     }
 
-    public Long getUserNumber() {
-        return userNumber;
-    }
-
-    public void setUserNumber(Long userNumber) {
-        this.userNumber = userNumber;
-    }
-
     @Override
     public String getLabel() {
-        return org.getDeptName();
+        return org.getOrgName();
     }
 
     @Override
@@ -59,7 +40,15 @@ public class OrgTreeModel implements TreeModel<OrgModel> {
 
     @Override
     public Integer getOrder() {
-        return 0;
+        return org.getOrderNum();
+    }
+
+    public Integer getUserNumber() {
+        return userNumber;
+    }
+
+    public void setUserNumber(Integer userNumber) {
+        this.userNumber = userNumber;
     }
 
     @Override

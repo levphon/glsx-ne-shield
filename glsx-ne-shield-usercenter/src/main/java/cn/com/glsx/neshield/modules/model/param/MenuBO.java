@@ -1,4 +1,4 @@
-package cn.com.glsx.neshield.modules.model;
+package cn.com.glsx.neshield.modules.model.param;
 
 import lombok.Data;
 import lombok.experimental.Accessors;

@@ -1,8 +1,12 @@
 package cn.com.glsx.neshield.config;
 
+import com.google.code.kaptcha.impl.DefaultKaptcha;
+import com.google.code.kaptcha.util.Config;
 import org.apache.shiro.authc.credential.HashedCredentialsMatcher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Properties;
 
 @Configuration
 public class BeansConfig {
@@ -12,18 +16,18 @@ public class BeansConfig {
      *
      * @return
      */
-//    @Bean
-//    public DefaultKaptcha producer() {
-//        Properties properties = new Properties();
-//        properties.put("kaptcha.border", "no");
-//        properties.put("kaptcha.textproducer.font.color", "black");
-//        properties.put("kaptcha.textproducer.char.space", "4");
-//        properties.put("kaptcha.textproducer.char.length", "4");
-//        Config config = new Config(properties);
-//        DefaultKaptcha defaultKaptcha = new DefaultKaptcha();
-//        defaultKaptcha.setConfig(config);
-//        return defaultKaptcha;
-//    }
+    @Bean
+    public DefaultKaptcha producer() {
+        Properties properties = new Properties();
+        properties.put("kaptcha.border", "no");
+        properties.put("kaptcha.textproducer.font.color", "black");
+        properties.put("kaptcha.textproducer.char.space", "4");
+        properties.put("kaptcha.textproducer.char.length", "4");
+        Config config = new Config(properties);
+        DefaultKaptcha defaultKaptcha = new DefaultKaptcha();
+        defaultKaptcha.setConfig(config);
+        return defaultKaptcha;
+    }
 
     /**
      * 加密

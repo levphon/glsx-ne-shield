@@ -23,9 +23,7 @@ public class Department extends BaseEntity {
         if (isAdd){
             SyntheticUser user = ShieldContextHolder.getUser();
             this.setCreatedBy(user.getUserId());
-            this.setUpdatedBy(user.getUserId());
             this.setCreatedDate(new Date());
-            this.setUpdatedDate(new Date());
         }
     }
 
@@ -45,13 +43,13 @@ public class Department extends BaseEntity {
      * 排序值
      */
     @Column(name = "order_num")
-    private Long orderNum;
+    private Integer orderNum;
 
     /**
      * 状态（1=启用 2=禁用）
      */
     @Column(name = "enable_status")
-    private Long enableStatus;
+    private Integer enableStatus;
 
     @Column(name = "is_root")
     private Integer isRoot;

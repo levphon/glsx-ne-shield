@@ -1,18 +1,23 @@
 package cn.com.glsx.neshield.modules.service.permissionStrategy;
 
+import cn.com.glsx.admin.common.constant.UserConstants;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
-import cn.com.glsx.neshield.modules.entity.Organization;
+import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.entity.Department;
+import cn.com.glsx.neshield.modules.entity.Organization;
+import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
+import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.service.DepartmentService;
 import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -25,6 +30,7 @@ import java.util.stream.Collectors;
 /**
  * @author taoyr
  */
+@Slf4j
 @Component
 public class SubDepartmentStrategy implements PermissionStrategy {
 
@@ -36,6 +42,31 @@ public class SubDepartmentStrategy implements PermissionStrategy {
 
     @Resource
     private DepartmentService departmentService;
+
+    @Override
+    public List<Department> permissionDepartments() {
+
+        Long departmentId = ShieldContextHolder.getDepartmentId();
+
+        //获取下属部门
+        List<OrgModel> modelList = organizationMapper.selectOrgList(new OrgTreeSearch().setTenantId(ShieldContextHolder.getTenantId()));
+        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).collect(Collectors.toList());
+
+        List<Long> subOrgIdList = Lists.newArrayList();
+        TreeModelUtil.findChildrenIds(departmentId, orgTreeModelList, subOrgIdList);
+        List<Department> list = departmentMapper.selectByIds(subOrgIdList);
+
+        //本部门
+        Department department = departmentMapper.selectById(departmentId);
+        list.add(department);
+        log.info("用户{} {}部门数为{}", ShieldContextHolder.getUsername(), UserConstants.RolePermitCastType.subDepartment.getValue(), list.size());
+        return list;
+    }
+
+    @Override
+    public List<User> permissionUsers() {
+        throw new UserCenterException("权限错误调用，请检查");
+    }
 
     /**
      * 3 subDepartment
@@ -89,8 +120,10 @@ public class SubDepartmentStrategy implements PermissionStrategy {
         }
 
         departmentDTOList = departmentService.getDepartmentAssembled(departmentParamList, true, true);
+
         DepartmentDTO departmentDTO = departmentDTOList.get(0);
-        Long departmentUser;
+
+        Integer departmentUser;
 
         if (isSup) {
             departmentUser = departmentService.countRecursiveDepartmentUser(userDeptId);
@@ -115,7 +148,7 @@ public class SubDepartmentStrategy implements PermissionStrategy {
 
         List<Department> finalNamedDepartmentList = Lists.newArrayList();
         for (Department department : namedDepartmentList) {
-            if (subIdList.contains(department.getId())){
+            if (subIdList.contains(department.getId())) {
                 finalNamedDepartmentList.add(department);
             }
         }
@@ -133,13 +166,15 @@ public class SubDepartmentStrategy implements PermissionStrategy {
 
         //根节点
         List<Organization> rootList = organizationMapper.selectRootIdList(nameDepartmentIdList);
+
         Set<Long> rootIds = rootList.stream().map(Organization::getSuperiorId).collect(Collectors.toSet());
 
         Map<Long, Organization> organizationMap = organizationList.stream().filter(m -> m.getDepth() == 1).
                 collect(Collectors.toMap(Organization::getSubId, treeModel -> treeModel));
 
         List<Long> departmentIdList = allDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
-        Map<Long, Long> recursiveDepartmentUserMap = departmentService.countRecursiveDepartmentUser(departmentIdList);
+
+        Map<Long, Integer> recursiveDepartmentUserMap = departmentService.countRecursiveDepartmentUser(departmentIdList);
 
         List<OrgModel> modelList = allDepartmentList.stream().map(dep -> {
             OrgModel orgModel = new OrgModel();
@@ -147,14 +182,16 @@ public class SubDepartmentStrategy implements PermissionStrategy {
             if (organization != null) {
                 orgModel.setParentId(organization.getSuperiorId());
             }
-            orgModel.setId(dep.getId());
-            orgModel.setDeptName(dep.getDepartmentName());
+            orgModel.setOrgId(dep.getId());
+            orgModel.setOrgName(dep.getDepartmentName());
             orgModel.setTenantId(dep.getTenantId());
-            Long userNumber = recursiveDepartmentUserMap.get(dep.getId());
+            Integer userNumber = recursiveDepartmentUserMap.get(dep.getId());
             orgModel.setUserNumber(userNumber);
             return orgModel;
         }).collect(Collectors.toList());
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrderNum)).collect(Collectors.toList());
+
+        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrder)).collect(Collectors.toList());
+
         List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertClosure(orgTreeModelList, Lists.newArrayList(rootIds));
 
         return orgTree;

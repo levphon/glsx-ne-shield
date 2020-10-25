@@ -1,9 +1,9 @@
 package cn.com.glsx.neshield.modules.mapper;
 
+import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Organization;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
-import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import com.glsx.plat.mybatis.mapper.CommonBaseMapper;
@@ -14,6 +14,14 @@ import java.util.List;
 
 @Mapper
 public interface OrganizationMapper extends CommonBaseMapper<Organization> {
+
+    /**
+     * 插入根节点路径
+     *
+     * @param organization
+     * @return
+     */
+    int insertRootPath(Organization organization);
 
     /**
      * 插入闭包路径
@@ -40,28 +48,12 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
     List<OrgModel> selectOrgList(OrgTreeSearch search);
 
     /**
-     * 根据id获取组织机构
-     *
-     * @param search
-     * @return
-     */
-    List<OrgModel> selectOrgTree(OrgTreeSearch search);
-
-    /**
      * 获取父级id（含自己）
      *
      * @param name
      * @return
      */
     List<String> selectSuperiorIdsByName(@Param("name") String name);
-
-    /**
-     * 插入根节点路径
-     *
-     * @param organization
-     * @return
-     */
-    int insertRootPath(Organization organization);
 
     /**
      * 找到所有子节点
@@ -72,20 +64,28 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
     List<Organization> selectByRootId(Long organizationId);
 
     /**
-     * 找到根路径
-     *
-     * @param organizationId
-     * @return
-     */
-    Organization selectRootPath(Long organizationId);
-
-    /**
      * 找到根节点list
      *
-     * @param subIdList
+     * @param subIds
      * @return
      */
-    List<Organization> selectRootIdList(@Param("subIdList") List<Long> subIdList);
+    List<Organization> selectRootIdList(@Param("subIds") List<Long> subIds);
+
+    /**
+     * 找到根路径
+     *
+     * @param tenantId
+     * @return
+     */
+    Organization selectRootPath(@Param("tenantId") Long tenantId);
+
+    /**
+     * 找到根路径
+     *
+     * @param subId
+     * @return
+     */
+    Organization selectRootPathBySubId(@Param("subId") Long subId);
 
     /**
      * 得到上级节点
@@ -118,7 +118,7 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
      * @param departmentIds
      * @return
      */
-    List<Organization> selectSubList(List<Long> departmentIds, Integer depth);
+    List<Organization> selectSubList(@Param("departmentIds") List<Long> departmentIds, @Param("depth") Integer depth);
 
     /**
      * 根据条件筛选符合的路径
@@ -127,4 +127,14 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
      * @return
      */
     List<Organization> selectList(OrganizationBO organizationBO);
+
+    /**
+     * @param rootId
+     * @param subId
+     * @return
+     */
+    Organization selectRootByRootIdAndSubId(@Param("rootId") Long rootId, @Param("subId") Long subId);
+
+    List<Organization> selectAllSuperiorBySubId(@Param("subId") Long subId);
+
 }

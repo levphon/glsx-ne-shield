@@ -85,18 +85,22 @@ public class DictDataService implements InitializingBean {
     }
 
     public void addType(SysDictType type) {
+        // TODO: 2020/10/20 字典类型校验
         typeMapper.insert(type);
     }
 
     public void addData(SysDictData data) {
+        // TODO: 2020/10/20 字典数据校验
         dataMapper.insert(data);
     }
 
     public void editType(SysDictType type) {
+        // TODO: 2020/10/20 字典类型校验
         typeMapper.updateByPrimaryKeySelective(type);
     }
 
     public void editData(SysDictData data) {
+        // TODO: 2020/10/20 字典数据校验
         dataMapper.updateByPrimaryKeySelective(data);
     }
 

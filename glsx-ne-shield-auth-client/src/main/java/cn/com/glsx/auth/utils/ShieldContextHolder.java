@@ -4,6 +4,7 @@ import cn.com.glsx.auth.model.*;
 import com.google.common.collect.Lists;
 import lombok.NoArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
+import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,9 @@ public class ShieldContextHolder {
 
     // 获取当前用户
     public static SyntheticUser getUser() {
-        return USER_THREAD_LOCAL.get();
+        SyntheticUser user = USER_THREAD_LOCAL.get();
+        Assert.notNull(user, "获取当前用户信息失败");
+        return user;
     }
 
     // 移除当前用户
@@ -35,49 +38,49 @@ public class ShieldContextHolder {
     }
 
     public static boolean isSuperAdmin() {
-        Long userId = getUserId();
-        return userId != null && 1 == userId;
+        return getUser().isAdmin();
     }
 
-    public static boolean isRoleAdmin(){
+    public static boolean isRoleAdmin() {
         Long roleId = getRoleId();
         return adminRoleId.equals(roleId);
     }
 
     public static Long getUserId() {
         SyntheticUser user = getUser();
-        if (user != null) {
-            return user.getUserId();
-        }
-        return null;
+        return user.getUserId();
     }
 
     public static String getUsername() {
         SyntheticUser user = getUser();
-        if (user != null) {
-            return user.getUsername();
-        }
-        return null;
+        return user.getUsername();
     }
 
     public static UserGroup getUserGroup() {
         SyntheticUser user = getUser();
-        if (user != null) {
-            return user.getUserGroup();
-        }
-        return null;
+        return user.getUserGroup();
+    }
+
+    public static Tenant getTenant() {
+        SyntheticUser user = getUser();
+        Tenant tenant = user.getTenant();
+        Assert.notNull(tenant, "获取当前用户租户信息失败");
+        return tenant;
     }
 
     public static Department getDepartment() {
         SyntheticUser user = getUser();
-        if (user != null) {
-            return user.getDepartment();
-        }
-        return null;
+        Department dept = user.getDepartment();
+        Assert.notNull(dept, "获取当前用户部门信息失败");
+        return dept;
     }
 
-    public static Long getRootDepartmentId(){
-        return null;
+    public static Long getTenantId() {
+        return getTenant().getTenantId();
+    }
+
+    public static Long getDepartmentId() {
+        return getDepartment().getDeptId();
     }
 
     public static List<Long> getRoleIds() {
@@ -90,43 +93,37 @@ public class ShieldContextHolder {
         return new ArrayList<>();
     }
 
-    public static Long getRoleId(){
-        return getRoleIds().get(0);
-    }
-
-    public static List<Permission> getRolePermissions(Long roleId) {
-        //TODO
-        return Lists.newArrayList();
-    }
-
     /**
      * 获取当前用户角色可见的创建人id
+     *
      * @return
      */
-    public static List<Long> getCreatorIds(){
+    public static List<Long> getCreatorIds() {
         //TODO
         return Lists.newArrayList();
     }
 
-    public static List<Menu> getRoleMenus(Long roleId){
-        return getUser().getMenuList();
+    public static List<MenuPermission> getUserMenuPermissions() {
+        SyntheticUser user = getUser();
+        return user.getMenuPermissionList();
     }
 
-    public static List<Permission> getUserPermissions() {
-        List<Long> roleIds = getRoleIds();
-        //TODO 根据roleIds组装permissions
-        return Lists.newArrayList();
+    public static Role getRole() {
+        Role role = getUser().getRoleList().get(0);
+        Assert.notNull(role, "获取当前用户角色信息失败");
+        return role;
+    }
+
+    public static Long getRoleId() {
+        return getRole().getRoleId();
+    }
+
+    public static Integer getRoleVisibility() {
+        return getRole().getRoleVisibility();
     }
 
     public static Integer getRolePermissionType() {
         return getRole().getRolePermissionType();
     }
 
-    public static Role getRole(){
-        return getUser().getRoleList().get(0);
-    }
-
-    public static Integer getRoleVisibility(){
-        return getRole().getRoleVisibility();
-    }
 }

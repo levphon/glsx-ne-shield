@@ -1,19 +1,22 @@
 package cn.com.glsx.neshield.modules.service;
 
+import cn.com.glsx.admin.common.enums.MenuType;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.converter.MenuConverter;
 import cn.com.glsx.neshield.modules.entity.Menu;
+import cn.com.glsx.neshield.modules.entity.MenuPermission;
 import cn.com.glsx.neshield.modules.entity.RoleMenu;
 import cn.com.glsx.neshield.modules.mapper.MenuMapper;
+import cn.com.glsx.neshield.modules.mapper.MenuPermissionMapper;
 import cn.com.glsx.neshield.modules.mapper.RoleMenuMapper;
-import cn.com.glsx.neshield.modules.model.MenuBO;
-import cn.com.glsx.neshield.modules.model.MenuDTO;
 import cn.com.glsx.neshield.modules.model.MenuModel;
 import cn.com.glsx.neshield.modules.model.MenuTreeModel;
 import cn.com.glsx.neshield.modules.model.export.MenuExport;
+import cn.com.glsx.neshield.modules.model.param.MenuBO;
 import cn.com.glsx.neshield.modules.model.param.MenuSearch;
 import cn.com.glsx.neshield.modules.model.param.UserSearch;
+import cn.com.glsx.neshield.modules.model.view.MenuDTO;
 import com.github.pagehelper.PageInfo;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.glsx.plat.redis.utils.RedisUtils;
@@ -24,7 +27,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static cn.com.glsx.admin.common.constant.RedisConstants.FIVE_SECONDS;
@@ -41,6 +47,9 @@ public class MenuService {
 
     @Resource
     private RoleMenuMapper roleMenuMapper;
+
+    @Resource
+    private MenuPermissionMapper menuPermissionMapper;
 
     @Autowired
     private RedisUtils redisUtils;
@@ -69,17 +78,26 @@ public class MenuService {
      * @param roleIds
      * @return
      */
-    public List<MenuModel> getMenuFullTreeWithChecked(List<Long> roleIds) {
-        List<MenuModel> modelList = menuMapper.selectMenuFullTree();
-        List<MenuModel> permMenuList = menuMapper.selectMenuPermTree(roleIds);
-        modelList.forEach(mm -> {
-            for (MenuModel mm2 : permMenuList) {
-                if (mm.getMenuNo().equals(mm2.getMenuNo())) {
-                    mm.setChecked(true);
-                    break;
+    public List<MenuModel> getMenuFullTreeWithChecked(List<Long> roleIds, Long editRoleId) {
+        List<MenuModel> modelList = Lists.newArrayList();
+        //当前登录用户所拥有的权限
+        if (ShieldContextHolder.isSuperAdmin()) {
+            modelList = menuMapper.selectMenuFullTree();
+        } else {
+            modelList = menuMapper.selectMenuPermTree(roleIds, MenuType.getAllTypes());
+        }
+        //被编辑角色的权限,editRoleId==null为新增角色时查询
+        if (editRoleId != null) {
+            List<MenuModel> permMenuList = menuMapper.selectMenuPermTree(Lists.newArrayList(editRoleId), MenuType.getAllTypes());
+            modelList.forEach(mm -> {
+                for (MenuModel mm2 : permMenuList) {
+                    if (mm.getMenuNo().equals(mm2.getMenuNo())) {
+                        mm.setChecked(true);
+                        break;
+                    }
                 }
-            }
-        });
+            });
+        }
         List<MenuTreeModel> menuTreeModelList = modelList.stream().map(MenuTreeModel::new).collect(Collectors.toList());
         List menuTree = TreeModelUtil.fastConvertByRootId(menuTreeModelList, 0L);
         Collections.sort(menuTree, Comparator.comparing(MenuTreeModel::getOrder));
@@ -93,7 +111,7 @@ public class MenuService {
      * @return
      */
     public List<MenuModel> getMenuTree(List<Long> roleIds) {
-        List<MenuModel> modelList = menuMapper.selectMenuPermTree(roleIds);
+        List<MenuModel> modelList = menuMapper.selectMenuPermTree(roleIds, Lists.newArrayList(MenuType.DIRECTORY.getCode(), MenuType.MENU.getCode()));
         List<MenuTreeModel> menuTreeModelList = modelList.stream().map(MenuTreeModel::new).collect(Collectors.toList());
         List menuTree = TreeModelUtil.fastConvertByRootId(menuTreeModelList, 0L);
         Collections.sort(menuTree, Comparator.comparing(MenuTreeModel::getOrder));
@@ -194,6 +212,10 @@ public class MenuService {
         Menu menu = new Menu(false);
         BeanUtils.copyProperties(menuBO, menu);
         menuMapper.updateByPrimaryKeySelective(menu);
+    }
+
+    public List<MenuPermission> getMenuPermissions(List<Long> menuIdList) {
+        return menuPermissionMapper.selectByMenuIds(menuIdList);
     }
 
     public void logicDeleteById(Long id) {

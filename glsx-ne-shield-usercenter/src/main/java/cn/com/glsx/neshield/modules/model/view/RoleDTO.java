@@ -1,6 +1,5 @@
-package cn.com.glsx.neshield.modules.model;
+package cn.com.glsx.neshield.modules.model.view;
 
-import cn.com.glsx.neshield.modules.entity.Department;
 import lombok.Data;
 
 import java.util.List;
@@ -21,7 +20,7 @@ public class RoleDTO {
     private Integer rolePermissionType;
 
     /**
-     * 最大拥有用户数
+     * 角色最大拥有用户数
      */
     private Long maxUser;
 
@@ -36,8 +35,8 @@ public class RoleDTO {
     private Integer roleVisibility;
 
     /**
-     * 角色租户范围，逗号分割
+     * 角色租户
      */
-    private List<Department> roleDepartments;
+    private List<DepartmentDTO> roleTenants;
 
 }

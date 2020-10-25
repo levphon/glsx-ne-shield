@@ -1,13 +1,13 @@
 package cn.com.glsx.auth.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.util.List;
 
-@Setter
-@Getter
+@Data
 public class Role {
+
+    private Long tenantId;
 
     private Long roleId;
 
@@ -18,12 +18,10 @@ public class Role {
      */
     private Integer rolePermissionType;
 
-    private Long tenantId;
-
-    private List<Permission> permissionList;
-
     private Integer roleVisibility;
 
     private String roleTenants;
+
+    private List<MenuPermission> menuPermissionList;
 
 }

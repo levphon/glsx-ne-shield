@@ -18,15 +18,56 @@
     updated_date, updated_by
   </sql>
 
-    <select id="selectSubordinateDepartmentList" resultType="cn.com.glsx.neshield.modules.model.view.DepartmentUserCount">
-    select
-    tu.department_id departmentId,count(*) userNumber
-    from t_user tu, t_user_path tup
-    where tu.del_flag = 0 and tup.del_flag = 0
-    and tup.superior_id = #{userId} and tup.sub_id = tu.department_id
+    <insert id="insertRootPath">
+        insert into t_user_path
+        (superior_id, sub_id, depth, tenant_id, created_date,created_by)
+        values
+        (#{superiorId}, #{subId}, 0, #{tenantId}, #{createdDate}, #{createdBy})
+    </insert>
+
+    <insert id="insertUserPath" useGeneratedKeys="false">
+        insert into t_user_path
+        (superior_id, sub_id, depth, tenant_id, created_date, created_by)
+        select tor.superior_id, #{subId}, tor.depth+1, #{tenantId}, #{createdDate}, #{createdBy}
+        from t_user_path as tor
+        where tor.sub_id = #{superiorId}
+        union all
+        select #{superiorId}, #{subId}, 1, #{tenantId}, #{createdDate}, #{createdBy}
+    </insert>
+
+    <select id="selectRootPath" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_user_path
+        where tenant_id = #{tenantId}
+        and depth = 0
+        and del_flag = 0
+    </select>
+
+    <select id="selectRootPathBySubId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_user_path
+        where sub_id = #{subId} and del_flag = 0
+        and depth = (
+        select max(depth)
+        from t_organization
+        where sub_id = #{subId} and del_flag = 0
+        )
+    </select>
+
+    <select id="selectSubordinateDepartmentList"
+            resultType="cn.com.glsx.neshield.modules.model.view.DepartmentUserCount">
+        select
+        tu.department_id departmentId,count(*) userNumber
+        from t_user tu, t_user_path tup
+        where tu.del_flag = 0 and tup.del_flag = 0
+        and tup.superior_id = #{userId} and tup.sub_id = tu.department_id
   </select>
+
     <select id="selectUserSubordinateList" resultMap="BaseResultMap">
-        select <include refid="Base_Column_List"></include>
+        select
+        <include refid="Base_Column_List"/>
         from t_user_path
         where del_flag = 0
         and superior_id = #{userId}

@@ -1,4 +1,4 @@
-package cn.com.glsx.neshield.modules.model;
+package cn.com.glsx.neshield.modules.model.view;
 
 import lombok.Data;
 
@@ -11,6 +11,7 @@ public class MenuDTO {
     private String frontRoute;
     private String permissionTag;
     private Integer type;
+    private String icon;
     private Long parentId;
     private Integer orderNum;
     private Integer enableStatus;

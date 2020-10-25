@@ -45,7 +45,6 @@ import java.util.List;
 })
 public class DataOperationPermissionInterceptor implements Interceptor {
 
-
     private static final ObjectFactory DEFAULT_OBJECT_FACTORY = new DefaultObjectFactory();
     private static final ObjectWrapperFactory DEFAULT_OBJECT_WRAPPER_FACTORY = new DefaultObjectWrapperFactory();
     private static final ReflectorFactory REFLECTOR_FACTORY = new DefaultReflectorFactory();
@@ -53,14 +52,16 @@ public class DataOperationPermissionInterceptor implements Interceptor {
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
         Object target = invocation.getTarget();
-        log.info("*************************咱的" + target.getClass().getName());
+        //log.info("*************************咱的" + target.getClass().getName());
 
         if (target instanceof RoutingStatementHandler) {
             try {
                 RoutingStatementHandler statementHandler = (RoutingStatementHandler) target;
                 // MetaObject是mybatis里面提供的一个工具类，类似反射的效果
-                MetaObject metaStatementHandler = MetaObject.forObject(statementHandler, DEFAULT_OBJECT_FACTORY,
-                        DEFAULT_OBJECT_WRAPPER_FACTORY, REFLECTOR_FACTORY);
+                MetaObject metaStatementHandler = MetaObject.forObject(statementHandler,
+                        DEFAULT_OBJECT_FACTORY,
+                        DEFAULT_OBJECT_WRAPPER_FACTORY,
+                        REFLECTOR_FACTORY);
 
                 MappedStatement mappedStatement = (MappedStatement) metaStatementHandler.getValue("delegate.mappedStatement");
 
@@ -103,9 +104,7 @@ public class DataOperationPermissionInterceptor implements Interceptor {
                     Long creatorId = 0L;
 
                     List<Long> creatorIds = ShieldContextHolder.getCreatorIds();
-
                     //是否有操作权限
-
 
                 } else if (type == 2) {
 
@@ -116,7 +115,6 @@ public class DataOperationPermissionInterceptor implements Interceptor {
                 throw e;
             }
         }
-
 
         return invocation.proceed();
     }
@@ -143,4 +141,5 @@ public class DataOperationPermissionInterceptor implements Interceptor {
         }
         return requireDataPermissions;
     }
+
 }

@@ -1,12 +1,14 @@
 package cn.com.glsx.neshield.modules.controller;
 
 import cn.com.glsx.admin.common.util.RegexUtil;
-import cn.com.glsx.neshield.modules.model.UserDTO;
-import cn.com.glsx.neshield.modules.model.param.UserSearch;
-import cn.com.glsx.neshield.modules.service.UserService;
 import cn.com.glsx.neshield.modules.BaseController;
-import cn.com.glsx.neshield.modules.model.param.UserBO;
 import cn.com.glsx.neshield.modules.model.export.UserExport;
+import cn.com.glsx.neshield.modules.model.param.UserBO;
+import cn.com.glsx.neshield.modules.model.param.UserSearch;
+import cn.com.glsx.neshield.modules.model.view.SuperTreeModel;
+import cn.com.glsx.neshield.modules.model.view.UserDTO;
+import cn.com.glsx.neshield.modules.service.UserService;
+import com.github.pagehelper.PageInfo;
 import com.glsx.plat.common.annotation.SysLog;
 import com.glsx.plat.common.enums.OperateType;
 import com.glsx.plat.common.utils.DateUtils;
@@ -41,7 +43,8 @@ public class UserController extends BaseController {
 
     @GetMapping("/search")
     public R search(UserSearch search) {
-        return userService.search(search);
+        PageInfo<UserDTO> pageInfo = userService.search(search);
+        return R.ok().putPageData(pageInfo);
     }
 
     @GetMapping(value = "/export")
@@ -58,8 +61,8 @@ public class UserController extends BaseController {
         if (StringUtils.isBlank(password) || !RegexUtil.regexPwd(password)) {
             return R.error(ResultConstants.ARGS_ERROR.getCode(), "密码格式错误");
         }
-
-        return userService.addUser(userBO);
+        userService.addUser(userBO);
+        return R.ok();
     }
 
     @SysLog(module = MODULE, action = OperateType.EDIT)
@@ -67,27 +70,27 @@ public class UserController extends BaseController {
     public R edit(@RequestBody @Validated UserBO userBO) {
         AssertUtils.isNull(userBO.getId(), "ID不能为空");
 //        User user = UserConverter.INSTANCE.bo2do(userBO);
-        return userService.editUser(userBO);
+        userService.editUser(userBO);
+        return R.ok();
     }
 
     @GetMapping(value = "/info")
-    public R info(Long id) {
+    public R info(@RequestParam("id") Long id) {
         UserDTO user = userService.userInfo(id);
         return R.ok().data(user);
     }
 
+    @SysLog(module = MODULE, action = OperateType.DELETE)
     @GetMapping(value = "/delete")
-    public R delete(Long id) {
+    public R delete(@RequestParam("id") Long id) {
         userService.logicDeleteById(id);
         return R.ok();
     }
 
     @GetMapping("/suitableSuperUsers")
-    public R suitableSuperUsers(Long departmentId){
-        if (departmentId == null){
-            return R.ok();
-        }
-        return userService.suitableSuperUsers(departmentId);
+    public R suitableSuperUsers(@RequestParam("departmentId") Long departmentId) {
+        SuperTreeModel superTreeModel = userService.suitableSuperUsers(departmentId);
+        return R.ok().data(superTreeModel);
     }
 
 }

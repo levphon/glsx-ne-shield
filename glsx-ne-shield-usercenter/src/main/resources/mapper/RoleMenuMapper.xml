@@ -14,8 +14,48 @@
     <sql id="Base_Column_List">
     id, role_id, menu_id, del_flag, created_date, created_by, updated_date, updated_by
   </sql>
+
+    <select id="selectByRoleId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role_menu
+        where del_flag = 0
+        and role_id = #{roleId}
+    </select>
+
+    <select id="selectByMenuId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role_menu
+        where del_flag = 0
+        and menu_id = #{menuId}
+    </select>
+
+    <select id="selectMenuIdsByRoleId" resultType="java.lang.Long">
+        select menu_id
+        from t_role_menu
+        where del_flag = 0
+        and role_id = #{roleId}
+    </select>
+
+    <select id="selectMenuIdsByRoleIds" resultType="java.lang.Long">
+        select menu_id
+        from t_role_menu
+        where del_flag = 0
+        and role_id in
+        <foreach collection="roleIds" separator="," close=")" open="(" item="roleId">
+            #{roleId}
+        </foreach>
+    </select>
+
+    <select id="selectRoleIdsByMenuId" resultType="java.lang.Long">
+        select role_id
+        from t_role_menu
+        where del_flag = 0
+        and menu_id = #{menuId}
+    </select>
+
     <update id="logicDelByRoleId">
-        update t_role_menu set del_flag = -1
-        where role_id = #{roleId}
+        update t_role_menu set del_flag = -1 where role_id = #{roleId}
     </update>
 </mapper>

@@ -13,6 +13,10 @@ import java.util.List;
 @Mapper
 public interface UserMapper extends CommonBaseMapper<User> {
 
+    User selectById(@Param("id") Long id);
+
+    List<User> selectByDepartmentId(@Param("departmentId") Long departmentId);
+
     User selectByAccount(@Param("account") String username);
 
     int selectCntByAccount(@Param("account") String username);
@@ -23,7 +27,8 @@ public interface UserMapper extends CommonBaseMapper<User> {
 
     int countByCriterial(UserBO userBO);
 
-    List<DepartmentCount> countDepartmentsUser(@Param("departmentIdList") List<Long> departmentIdList);
+    List<DepartmentCount> countDepartmentsUser(@Param("departmentIds") List<Long> departmentIds);
 
-    List<User> selectDepartmentsSubordinate(@Param("departmentList") List<Long> departmentList, @Param("userId") Long userId, @Param("search") UserSearch search);
+    List<User> selectDepartmentsSubordinate(UserSearch search);
+
 }

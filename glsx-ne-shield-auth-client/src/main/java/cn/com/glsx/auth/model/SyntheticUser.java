@@ -11,16 +11,16 @@ public class SyntheticUser {
 
     private String username;
 
+    private boolean isAdmin;
+
     private UserGroup userGroup;
+
+    private Tenant tenant;
 
     private Department department;
 
     private List<Role> roleList;
 
-    private Long roleId;
-
-    private List<Menu> menuList;
-
-    private Long tenantId;
+    private List<MenuPermission> menuPermissionList;
 
 }

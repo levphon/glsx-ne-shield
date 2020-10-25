@@ -29,9 +29,7 @@ public class Tenant extends BaseEntity {
         if (isAdd){
             SyntheticUser user = ShieldContextHolder.getUser();
             this.setCreatedBy(user.getUserId());
-            this.setUpdatedBy(user.getUserId());
             this.setCreatedDate(new Date());
-            this.setUpdatedDate(new Date());
         }
     }
 

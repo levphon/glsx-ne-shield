@@ -13,4 +13,8 @@ public final class Constants extends BasicConstants {
 
     public final static String SERVER_NAME = "glsx_ne_shield";
 
+    public final static int IS_ROOT_DEPARTMENT = 1;
+
+    public final static int IS_NOT_ROOT_DEPARTMENT = 0;
+
 }

@@ -1,7 +1,10 @@
 package cn.com.glsx.auth.interceptor;
 
-import cn.com.glsx.auth.model.*;
+import cn.com.glsx.auth.model.MenuPermission;
+import cn.com.glsx.auth.model.RequireFunctionPermissions;
+import cn.com.glsx.auth.model.SyntheticUser;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -15,6 +18,7 @@ import java.util.stream.Collectors;
 /**
  * @author: taoyr
  **/
+@Slf4j
 @Component
 public class FunctionPermissionInterceptor implements HandlerInterceptor {
 
@@ -32,10 +36,11 @@ public class FunctionPermissionInterceptor implements HandlerInterceptor {
             }
 
             String url = request.getRequestURI();
+            log.info("RequestURI:" + url);
 
-            List<Permission> userPermissionList = ShieldContextHolder.getUserPermissions();
+            List<MenuPermission> menuPermissionList = ShieldContextHolder.getUserMenuPermissions();
 
-            boolean isPermit = userPermissionList.stream().map(Permission::getInterfaceUrl).collect(Collectors.toList()).contains(url);
+            boolean isPermit = menuPermissionList.stream().map(MenuPermission::getInterfaceUrl).collect(Collectors.toList()).contains(url);
 
             return isPermit;
 

@@ -1,10 +1,7 @@
 package cn.com.glsx.neshield.modules.model.view;
 
-import cn.com.glsx.neshield.modules.entity.User;
 import lombok.Data;
 import lombok.experimental.Accessors;
-
-import java.util.List;
 
 @Accessors(chain = true)
 @Data
@@ -25,21 +22,20 @@ public class DepartmentDTO {
     /**
      * 排序值
      */
-    private Long orderNum;
+    private Integer orderNum;
 
     /**
      * 状态（1=启用 2=禁用）
      */
-    private Long enableStatus;
+    private Integer enableStatus;
 
     private Integer isRoot;
 
     private boolean hasChildren;
 
-    private Long userNumber;
-
-    private List<DepartmentDTO> departmentDtoList;
-
-    private List<User> userList;
+    /**
+     * 用户数
+     */
+    private Integer userNumber;
 
 }

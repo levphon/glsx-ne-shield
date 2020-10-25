@@ -20,7 +20,7 @@ public class UserCenterException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
-    public UserCenterException of(SystemMessage message) {
+    public static UserCenterException of(SystemMessage message) {
         return new UserCenterException(message.getCode(), message.getMsg());
     }
 

@@ -1,9 +1,10 @@
 package cn.com.glsx.neshield.modules.service.permissionStrategy;
 
 import cn.com.glsx.auth.utils.ShieldContextHolder;
-import cn.com.glsx.neshield.modules.entity.User;
+import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Organization;
+import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
 import cn.com.glsx.neshield.modules.mapper.UserMapper;
@@ -16,6 +17,7 @@ import cn.com.glsx.neshield.modules.service.DepartmentService;
 import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 /**
  * @author taoyr
  */
+@Slf4j
 @Component
 public class SelfDepartmentStrategy implements PermissionStrategy {
 
@@ -42,6 +45,19 @@ public class SelfDepartmentStrategy implements PermissionStrategy {
 
     @Resource
     private DepartmentService departmentService;
+
+    @Override
+    public List<Department> permissionDepartments() {
+        List<Department> list = Lists.newArrayList();
+        Department department = departmentMapper.selectById(ShieldContextHolder.getDepartmentId());
+        list.add(department);
+        return list;
+    }
+
+    @Override
+    public List<User> permissionUsers() {
+        throw new UserCenterException("权限错误调用，请检查");
+    }
 
     /**
      * 2 self 或 selfDepartment
@@ -90,7 +106,7 @@ public class SelfDepartmentStrategy implements PermissionStrategy {
 
         departmentDTOList = departmentService.getDepartmentAssembled(departmentParamList, false, false);
 
-        long userNumber = userMapper.countByCriterial(new UserBO().setDepartmentId(userDeptId));
+        Integer userNumber = userMapper.countByCriterial(new UserBO().setDepartmentId(userDeptId));
 
         departmentDTOList.forEach(dep -> dep.setUserNumber(userNumber));
 
@@ -150,13 +166,13 @@ public class SelfDepartmentStrategy implements PermissionStrategy {
             if (organization != null) {
                 orgModel.setParentId(organization.getSuperiorId());
             }
-            orgModel.setId(dep.getId());
-            orgModel.setDeptName(dep.getDepartmentName());
+            orgModel.setOrgId(dep.getId());
+            orgModel.setOrgName(dep.getDepartmentName());
             orgModel.setTenantId(dep.getTenantId());
-            orgModel.setUserNumber((long) count);
+            orgModel.setUserNumber(count);
             return orgModel;
         }).collect(Collectors.toList());
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrderNum)).collect(Collectors.toList());
+        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrder)).collect(Collectors.toList());
         List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertClosure(orgTreeModelList, Lists.newArrayList(rootIds));
 
         return orgTree;

@@ -9,6 +9,9 @@
         <result column="repel_roles" jdbcType="VARCHAR" property="repelRoles"/>
         <result column="remark" jdbcType="VARCHAR" property="remark"/>
         <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
+        <result column="role_visibility" jdbcType="INTEGER" property="roleVisibility"/>
+        <result column="role_tenants" jdbcType="VARCHAR" property="roleTenants"/>
+        <result column="enable_status" jdbcType="TINYINT" property="enableStatus"/>
         <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
         <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
         <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
@@ -17,13 +20,24 @@
     </resultMap>
     <sql id="Base_Column_List">
         id, role_name, role_permission_type, max_user, repel_roles,
-        remark, tenant_id, del_flag, created_date, created_by,
+        remark, tenant_id, role_visibility, role_tenants, enable_status, del_flag, created_date, created_by,
         updated_date, updated_by
     </sql>
-    <update id="logicDelete">
+
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role
+        where del_flag = 0
+        and id = #{id}
+    </select>
+
+    <update id="logicDeleteById">
         update t_role set del_flag = -1 where id = #{id}
     </update>
-    <select id="selectList" resultMap="BaseResultMap" parameterType="cn.com.glsx.neshield.modules.model.param.RoleSearch">
+
+    <select id="selectList" resultMap="BaseResultMap"
+            parameterType="cn.com.glsx.neshield.modules.model.param.RoleSearch">
         select
         <include refid="Base_Column_List"/>
         from t_role
@@ -39,13 +53,12 @@
         <include refid="Base_Column_List"/>
         from t_role
         where del_flag = 0
-        <if test="roleIds != null">
-            and id in
-            <foreach collection="roleIds" open="(" close=")" separator="," item="roleId">
-                #{roleId}
-            </foreach>
-        </if>
+        and id in
+        <foreach collection="roleIds" open="(" close=")" separator="," item="roleId">
+            #{roleId}
+        </foreach>
     </select>
+
     <select id="selectUserRoleList" resultType="cn.com.glsx.neshield.modules.entity.Role">
         select r.id id, r.role_name roleName, r.role_permission_type rolePermissionType
         from t_role r, t_user_role_relation urr
@@ -53,4 +66,37 @@
         and urr.user_id = #{userId}
     </select>
 
+    <select id="selectCntByName" resultType="java.lang.Integer">
+        select count(role_name) from t_role
+        where del_flag = 0
+        and role_name = #{roleName}
+    </select>
+
+    <select id="selectByName" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role
+        where del_flag = 0
+        and role_name = #{roleName}
+        limit 1
+    </select>
+
+    <select id="selectByVisibilityType" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role
+        where del_flag = 0
+        and role_visibility = #{roleVisibility}
+    </select>
+
+    <select id="selectByTenantIds" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_role
+        where del_flag = 0
+        and tenant_id in
+        <foreach collection="tenantIds" open="(" close=")" separator="," item="tenantId">
+            #{tenantId}
+        </foreach>
+    </select>
 </mapper>

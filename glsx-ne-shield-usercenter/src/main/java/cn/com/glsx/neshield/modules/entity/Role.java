@@ -62,6 +62,9 @@ public class Role extends BaseEntity {
     @Column(name = "role_tenants")
     private String roleTenants;
 
+    @Column(name = "enable_status")
+    private Integer enableStatus;
+
     public void setContextInfo(boolean isAdd){
         Date date = new Date();
         if (isAdd){

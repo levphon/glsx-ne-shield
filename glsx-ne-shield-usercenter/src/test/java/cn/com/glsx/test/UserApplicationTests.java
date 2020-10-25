@@ -1,6 +1,8 @@
 package cn.com.glsx.test;
 
 import cn.com.glsx.Application;
+import cn.com.glsx.auth.utils.ShieldContextHolder;
+import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Role;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.UserBO;
@@ -8,6 +10,7 @@ import cn.com.glsx.neshield.modules.service.MenuService;
 import cn.com.glsx.neshield.modules.service.OrganizationService;
 import cn.com.glsx.neshield.modules.service.RoleService;
 import cn.com.glsx.neshield.modules.service.UserService;
+import cn.com.glsx.neshield.modules.service.permissionStrategy.PermissionStrategy;
 import com.alibaba.fastjson.JSON;
 import com.glsx.plat.common.utils.StringUtils;
 import org.apache.shiro.authc.SimpleAuthenticationInfo;
@@ -24,6 +27,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.getBeanNameByCode;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = Application.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -44,17 +50,22 @@ public class UserApplicationTests {
     @Resource
     private HashedCredentialsMatcher hcm;
 
+    @Autowired
+    private Map<String, PermissionStrategy> permissionStrategyMap;
+
     @Test
     public void testOrg() {
         OrgTreeSearch search = new OrgTreeSearch();
-        search.setOrgName("");
+        search.setOrgName("部");
+
 //        List<Long> superiorIds = organizationService.getSuperiorIdsByName(search.getOrgName());
 //        search.setOrgIds(superiorIds);
-//
-//        List list = organizationService.getOrgTree(search);
-//        System.out.println(JSON.toJSONString(list));
 
-        organizationService.treeOrg("部");
+        List list1 = organizationService.fullOrgTree(search);
+        System.out.println(JSON.toJSONString(list1));
+
+        List list2 = organizationService.orgTree(search);
+        System.out.println(JSON.toJSONString(list2));
     }
 
     @Test

@@ -1,15 +1,13 @@
 package cn.com.glsx.auth.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.io.Serializable;
 
 /**
  * @author: taoyr
  **/
-@Setter
-@Getter
+@Data
 public class Menu implements Serializable {
 
     private Long menuId;

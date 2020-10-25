@@ -12,15 +12,15 @@ import java.util.List;
 @Accessors(chain = true)
 public class OrganizationBO {
 
-    private Long rootId;
+    private Long superiorId;
 
     private Long organizationId;
 
     private String name;
 
-    private Long orderNum;
+    private Integer orderNum;
 
-    private Long enableStatus;
+    private Integer enableStatus;
 
     private List<Long> subIdList;
 

@@ -1,14 +1,12 @@
 package cn.com.glsx.auth.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Setter
-@Getter
+@Data
 public class UserGroup {
 
+    private Long tenantId;
     private Long groupId;
     private String userGroupName;
-    private Long tenantId;
 
 }

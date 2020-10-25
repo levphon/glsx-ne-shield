@@ -1,8 +1,8 @@
 package cn.com.glsx.neshield.modules.converter;
 
 import cn.com.glsx.neshield.modules.entity.Menu;
-import cn.com.glsx.neshield.modules.model.MenuBO;
-import cn.com.glsx.neshield.modules.model.MenuDTO;
+import cn.com.glsx.neshield.modules.model.param.MenuBO;
+import cn.com.glsx.neshield.modules.model.view.MenuDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 

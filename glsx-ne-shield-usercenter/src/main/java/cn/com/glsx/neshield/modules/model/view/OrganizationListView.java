@@ -16,7 +16,7 @@ public class OrganizationListView implements Serializable {
 
     private String organizationName;
 
-    private Long orderNum;
+    private Integer orderNum;
 
     private Integer enableStatus;
 

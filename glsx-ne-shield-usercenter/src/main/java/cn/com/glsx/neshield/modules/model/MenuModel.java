@@ -13,8 +13,10 @@ public class MenuModel implements Serializable {
     private Long menuNo;
     private String menuName;
     private Long parentId;
-    private Integer orderNum;
     private Integer type;
+    private String icon;
+    private String frontRoute;
+    private Integer orderNum;
     private boolean checked;
 
 }

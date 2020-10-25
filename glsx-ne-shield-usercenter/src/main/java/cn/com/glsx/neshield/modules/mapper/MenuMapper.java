@@ -1,9 +1,9 @@
 package cn.com.glsx.neshield.modules.mapper;
 
 import cn.com.glsx.neshield.modules.entity.Menu;
-import cn.com.glsx.neshield.modules.model.MenuDTO;
 import cn.com.glsx.neshield.modules.model.MenuModel;
 import cn.com.glsx.neshield.modules.model.param.MenuSearch;
+import cn.com.glsx.neshield.modules.model.view.MenuDTO;
 import com.glsx.plat.mybatis.mapper.CommonBaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -18,7 +18,6 @@ public interface MenuMapper extends CommonBaseMapper<Menu> {
     /**
      * 根据条件获得菜单树-全部菜单
      *
-     * @param roleIds
      * @return
      */
     List<MenuModel> selectMenuFullTree();
@@ -29,7 +28,7 @@ public interface MenuMapper extends CommonBaseMapper<Menu> {
      * @param roleIds
      * @return
      */
-    List<MenuModel> selectMenuPermTree(List<Long> roleIds);
+    List<MenuModel> selectMenuPermTree(@Param("roleIds") List<Long> roleIds, @Param("menuTypes") List<Integer> menuTypes);
 
     List<MenuModel> selectMenuTreeByParentId(@Param("parentId") Long parentId, List<Long> roleIds);
 
@@ -39,7 +38,7 @@ public interface MenuMapper extends CommonBaseMapper<Menu> {
      * @param roleIds
      * @return
      */
-    List<Menu> selectMenuList(List<Long> roleIds);
+    List<Menu> selectMenuList(@Param("roleIds") List<Long> roleIds);
 
     /**
      * 根据父菜单id获得子菜单列表

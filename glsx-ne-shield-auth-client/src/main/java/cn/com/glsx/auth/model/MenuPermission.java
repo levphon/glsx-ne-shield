@@ -3,20 +3,15 @@ package cn.com.glsx.auth.model;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import javax.persistence.Column;
-
 /**
  * @author: taoyr
  **/
 @Data
 @Accessors(chain = true)
-public class Permission {
+public class MenuPermission {
 
-    private Integer permissionId;
-
-    private Integer menuId;
+    private String permissionTag;
 
     private String interfaceUrl;
-
 
 }

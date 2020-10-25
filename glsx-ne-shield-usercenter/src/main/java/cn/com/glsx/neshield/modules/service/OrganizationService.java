@@ -1,25 +1,28 @@
 package cn.com.glsx.neshield.modules.service;
 
+import cn.com.glsx.admin.common.constant.Constants;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
-import cn.com.glsx.neshield.modules.entity.Organization;
-import cn.com.glsx.neshield.modules.model.OrgModel;
-import cn.com.glsx.neshield.modules.model.OrgTreeModel;
-import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
-import cn.com.glsx.neshield.modules.service.permissionStrategy.PermissionStrategy;
+import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.entity.Department;
+import cn.com.glsx.neshield.modules.entity.Organization;
 import cn.com.glsx.neshield.modules.entity.Tenant;
+import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
 import cn.com.glsx.neshield.modules.mapper.TenantMapper;
 import cn.com.glsx.neshield.modules.mapper.UserMapper;
+import cn.com.glsx.neshield.modules.model.OrgModel;
+import cn.com.glsx.neshield.modules.model.OrgTreeModel;
+import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import cn.com.glsx.neshield.modules.model.param.UserBO;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
+import cn.com.glsx.neshield.modules.service.permissionStrategy.PermissionStrategy;
 import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.common.utils.TreeModelUtil;
-import com.glsx.plat.core.web.R;
+import com.glsx.plat.exception.SystemMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.all;
-import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.getBeanNameByCode;
+import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.*;
 
 /**
  * @author: taoyr
@@ -56,14 +58,47 @@ public class OrganizationService {
     @Resource
     private DepartmentService departmentService;
 
-    private static final int IS_ROOT_DEPARTMENT = 1;
-
-    private static final int IS_NOT_ROOT_DEPARTMENT = 0;
-
     private final Map<String, PermissionStrategy> permissionStrategyMap;
 
     public OrganizationService(Map<String, PermissionStrategy> permissionStrategyMap) {
         this.permissionStrategyMap = permissionStrategyMap;
+    }
+
+    /**
+     * 插入根节点路径
+     *
+     * @param orgBO
+     * @return
+     */
+    @Transactional
+    public void addRootOrganization(OrganizationBO orgBO) {
+        Tenant tenant = new Tenant(true);
+        tenant.setTenantName(orgBO.getName());
+
+        Tenant duplicateNameTenant = tenantMapper.selectOne(tenant);
+        if (duplicateNameTenant != null) {
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "已有同名的根节点");
+        }
+        tenantMapper.insertUseGeneratedKeys(tenant);
+
+        Long tenantId = tenant.getId();
+
+        Department department = new Department(true);
+        department.setEnableStatus(orgBO.getEnableStatus());
+        department.setTenantId(tenantId);
+        department.setIsRoot(Constants.IS_ROOT_DEPARTMENT);
+        department.setOrderNum(orgBO.getOrderNum());
+        department.setDepartmentName(orgBO.getName());
+        departmentMapper.insertUseGeneratedKeys(department);
+
+        Long departmentId = department.getId();
+
+        Organization organization = new Organization(true);
+        organization.setSuperiorId(departmentId);
+        organization.setSubId(departmentId);
+        organization.setTenantId(tenantId);
+        organizationMapper.insertRootPath(organization);
+        log.info("新增根组织关系{}", organization.toString());
     }
 
     /**
@@ -73,33 +108,33 @@ public class OrganizationService {
      * @return
      */
     @Transactional
-    public R addNodeToOrganization(OrganizationBO organizationBO) {
-        Long rootId = organizationBO.getRootId();
-        Department parentDepartment = departmentMapper.selectByPrimaryKey(rootId);
-        if (parentDepartment == null || parentDepartment.getDelFlag() != 0) {
-            return R.error("上级组织已删除，请刷新页面");
+    public void addNodeToOrganization(OrganizationBO organizationBO) {
+        Long superiorId = organizationBO.getSuperiorId();
+
+        //选中的上级组织
+        Department parentDept = departmentMapper.selectById(superiorId);
+        if (parentDept == null) {
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "上级组织已删除，请刷新页面");
         }
 
-        Long tenantId = parentDepartment.getTenantId();
+        Long tenantId = parentDept.getTenantId();
 
         Department department = new Department(true);
         department.setTenantId(tenantId);
         department.setEnableStatus(organizationBO.getEnableStatus());
         department.setOrderNum(organizationBO.getOrderNum());
-        department.setIsRoot(IS_NOT_ROOT_DEPARTMENT);
+        department.setIsRoot(Constants.IS_NOT_ROOT_DEPARTMENT);
         department.setDepartmentName(organizationBO.getName());
+        departmentMapper.insertUseGeneratedKeys(department);
 
-        long departmentId = departmentMapper.insertUseGeneratedKeys(department);
+        Long departmentId = department.getId();
 
         Organization organization = new Organization(true);
+        organization.setSuperiorId(superiorId);
         organization.setSubId(departmentId);
-        organization.setSuperiorId(rootId);
         organization.setTenantId(tenantId);
-        int ret = organizationMapper.insertOrganizationPath(organization);
-        if (ret > 0) {
-            return R.ok();
-        }
-        return R.error();
+        int insertCnt = organizationMapper.insertOrganizationPath(organization);
+        log.info("新增组织{}关系{}条", departmentId, insertCnt);
     }
 
     /**
@@ -123,18 +158,24 @@ public class OrganizationService {
     }
 
     /**
-     * 获取机构树
+     * 获取组织机构树
      *
      * @param search
      * @return
      */
-    public List<? extends TreeModel> getOrgTree(OrgTreeSearch search) {
+    public List<? extends TreeModel> fullOrgTree(OrgTreeSearch search) {
         List<OrgModel> modelList = organizationMapper.selectOrgList(search);
         List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).collect(Collectors.toList());
         List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByDepth(orgTreeModelList, 0);
         return orgTree;
     }
 
+    /**
+     * 获取上级组织id
+     *
+     * @param orgName
+     * @return
+     */
     public List<Long> getSuperiorIdsByName(String orgName) {
         List<String> idsStrs = organizationMapper.selectSuperiorIdsByName(orgName);
 
@@ -150,76 +191,30 @@ public class OrganizationService {
         return superiorIds;
     }
 
-    /**
-     * 插入根节点路径
-     *
-     * @param organizationBO
-     * @return
-     */
     @Transactional
-    public R addRootOrganization(OrganizationBO organizationBO) {
-        Long rootId = organizationBO.getRootId();
-        if (rootId != null) {
-            return R.error();
-        }
-        Tenant tenant = new Tenant(true);
-        tenant.setTenantName(organizationBO.getName());
+    public void editOrganization(OrganizationBO orgBO) {
+        Long organizationId = orgBO.getOrganizationId();
 
-        Tenant duplicateNameTenant = tenantMapper.selectOne(tenant);
-        if (duplicateNameTenant != null) {
-            return R.error("已有同名的根节点");
-        }
-
-        long tenantId = tenantMapper.insertUseGeneratedKeys(tenant);
-
-        Department department = new Department(true);
-        department.setEnableStatus(organizationBO.getEnableStatus());
-        department.setTenantId(tenantId);
-        department.setIsRoot(IS_ROOT_DEPARTMENT);
-        department.setOrderNum(organizationBO.getOrderNum());
-        department.setDepartmentName(organizationBO.getName());
-
-        long departmentId = departmentMapper.insertUseGeneratedKeys(department);
-
-        Organization organization = new Organization(true);
-        organization.setDepth(0);
-        organization.setSuperiorId(departmentId);
-        organization.setSubId(departmentId);
-        organization.setTenantId(tenantId);
-        int res = organizationMapper.insertRootPath(organization);
-
-        if (res > 0) {
-            return R.ok();
-        } else {
-            return R.error();
-        }
-    }
-
-    @Transactional
-    public R editOrganization(OrganizationBO organizationBO) {
-        Long organizationId = organizationBO.getOrganizationId();
-
-        Department department = departmentMapper.selectByPrimaryKey(organizationId);
+        Department department = departmentMapper.selectById(organizationId);
         if (department == null) {
-            return R.error();
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "组织部门不存在");
         }
-
-        department.setOrderNum(organizationBO.getOrderNum());
-        department.setDepartmentName(organizationBO.getName());
-        department.setEnableStatus(organizationBO.getEnableStatus());
+        department.setOrderNum(orgBO.getOrderNum());
+        department.setDepartmentName(orgBO.getName());
+        department.setEnableStatus(orgBO.getEnableStatus());
         department.setUpdatedDate(new Date());
         department.setUpdatedBy(ShieldContextHolder.getUserId());
         departmentMapper.updateByPrimaryKeySelective(department);
 
-        Tenant tenant = tenantMapper.selectByPrimaryKey(organizationId);
-        if (tenant == null) {
-            return R.ok();
+        //如果是根组织部门，则同时修改租户
+        if (department.getIsRoot() == Constants.IS_ROOT_DEPARTMENT) {
+            Tenant tenant = tenantMapper.selectById(department.getTenantId());
+            if (tenant == null) {
+                throw new UserCenterException(SystemMessage.FAILURE.getCode(), "组织租户不存在");
+            }
+            tenant.setTenantName(orgBO.getName());
+            tenantMapper.updateByPrimaryKeySelective(tenant);
         }
-
-        tenant.setTenantName(organizationBO.getName());
-        tenantMapper.updateByPrimaryKeySelective(tenant);
-
-        return R.ok();
     }
 
     /**
@@ -228,26 +223,25 @@ public class OrganizationService {
      * @param organizationId
      * @return
      */
-    public R deleteOrganization(Long organizationId) {
-        Department department = departmentMapper.selectByPrimaryKey(organizationId);
-        if (department == null || department.getDelFlag() != 0) {
-            return R.error("该组织不可用，请重新刷新列表");
+    public void deleteOrganization(Long organizationId) {
+        Department department = departmentMapper.selectById(organizationId);
+        if (department == null) {
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "该组织不可用，请重新刷新列表");
         }
 
         List<Organization> organizations = organizationMapper.selectByRootId(organizationId);
         List<Long> organizationIdList = organizations.stream().map(Organization::getSubId).collect(Collectors.toList());
 
         int userNum = userMapper.countByCriterial(new UserBO().setDepartmentIds(organizationIdList));
-
         if (userNum > 0) {
-            return R.error("该组织下仍关联有用户，请转移这部分用户后再重试");
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "该组织下仍关联有用户，请转移这部分用户后再重试");
         }
 
         //删除所有部门
         departmentMapper.logicDeleteByIdList(organizationIdList);
 
         //删除租户
-        if (IS_ROOT_DEPARTMENT == department.getIsRoot()) {
+        if (Constants.IS_ROOT_DEPARTMENT == department.getIsRoot()) {
             Long tenantId = department.getTenantId();
             tenantMapper.logicDeleteById(tenantId);
         }
@@ -255,7 +249,6 @@ public class OrganizationService {
         //删除所有路径
         organizationMapper.logicDeleteAllSubOrganization(organizationId);
 
-        return R.ok();
     }
 
     /**
@@ -270,61 +263,103 @@ public class OrganizationService {
         return superiorOrganization == null;
     }
 
-    public R organizationInfo(Long organizationId) {
-        Department department = departmentMapper.selectByPrimaryKey(organizationId);
+    public OrgModel organizationInfo(Long organizationId) {
+        OrgModel orgModel = null;
 
-        return R.ok().data(department);
+        Department department = departmentMapper.selectByPrimaryKey(organizationId);
+        if (department != null) {
+            orgModel = new OrgModel();
+            orgModel.setOrgId(department.getId());
+            orgModel.setOrgName(department.getDepartmentName());
+            orgModel.setTenantId(department.getTenantId());
+
+            Tenant tenant = tenantMapper.selectByPrimaryKey(department.getTenantId());
+            orgModel.setTenantName(tenant == null ? "" : tenant.getTenantName());
+        }
+        return orgModel;
     }
 
-    public R childrenList(OrganizationSearch organizationSearch) {
+    public List<DepartmentDTO> childrenList(OrganizationSearch search) {
 
-        List<Department> departmentList = organizationMapper.selectChildrenList(organizationSearch);
+        List<Department> departmentList = organizationMapper.selectChildrenList(search);
 
         List<DepartmentDTO> departmentDTOList = departmentService.getDepartmentAssembled(departmentList, true, false);
 
         if (ShieldContextHolder.isRoleAdmin() || all.getCode().equals(ShieldContextHolder.getRolePermissionType())) {
-            return R.ok().data(departmentDTOList);
+            return departmentDTOList;
         }
 
         List<Department> currentUserDepartmentList = departmentService.getCurrentUserDepartment();
+
         List<Long> departmentIdList = currentUserDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
 
         departmentDTOList = departmentDTOList.stream().filter(d -> departmentIdList.contains(d.getId())).collect(Collectors.toList());
 
-        return R.ok().data(departmentDTOList);
+        return departmentDTOList;
     }
 
     /**
      * @param rootId
      * @return
      */
-    public R simpleList(Long rootId) {
+    public List<DepartmentDTO> simpleList(Long rootId) {
         Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
 
         String beanName = getBeanNameByCode(rolePermissionType);
+
         if (StringUtils.isBlank(beanName)) {
-            return R.error("角色权限类型未知");
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "角色权限类型未知");
         }
 
         PermissionStrategy permissionStrategy = permissionStrategyMap.get(beanName);
 
         List<DepartmentDTO> departmentDTOList = permissionStrategy.organizationSimpleList(rootId);
 
-        return R.ok().data(departmentDTOList);
+        return departmentDTOList;
     }
 
-    public R treeOrg(String departmentName) {
-        Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
+    /**
+     * @param rolePermissionType
+     * @return
+     */
+    public void permissionStrategy(Integer rolePermissionType) {
 
         String beanName = getBeanNameByCode(rolePermissionType);
+
         if (StringUtils.isBlank(beanName)) {
-            return R.error("角色权限类型未知");
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "角色权限类型未知");
         }
 
         PermissionStrategy permissionStrategy = permissionStrategyMap.get(beanName);
 
-        List<? extends TreeModel> treeModels = permissionStrategy.orgTree(departmentName);
-
-        return R.ok().data(treeModels);
+        if (oneself.getCode().equals(rolePermissionType)) {
+            List<User> list = permissionStrategy.permissionUsers();
+            log.info(String.valueOf(list.size()));
+        } else if (subordinate.getCode().equals(rolePermissionType)) {
+            List<User> list = permissionStrategy.permissionUsers();
+            log.info(String.valueOf(list.size()));
+        } else if (selfDepartment.getCode().equals(rolePermissionType)) {
+            List<Department> list = permissionStrategy.permissionDepartments();
+            log.info(String.valueOf(list.size()));
+        } else if (subDepartment.getCode().equals(rolePermissionType)) {
+            List<Department> list = permissionStrategy.permissionDepartments();
+            log.info(String.valueOf(list.size()));
+        }
     }
+
+    public List orgTree(OrgTreeSearch search) {
+        Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
+
+        String beanName = getBeanNameByCode(rolePermissionType);
+        if (StringUtils.isBlank(beanName)) {
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "角色权限类型未知");
+        }
+
+        PermissionStrategy permissionStrategy = permissionStrategyMap.get(beanName);
+
+        List<? extends TreeModel> treeModels = permissionStrategy.orgTree(search.getOrgName());
+
+        return treeModels;
+    }
+
 }

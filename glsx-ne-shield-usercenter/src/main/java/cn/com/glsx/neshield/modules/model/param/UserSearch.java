@@ -15,12 +15,12 @@ public class UserSearch extends Page {
 
     private String searchField;
 
+    private Long userId;
+
     private Integer userStatus;
 
     private Long departmentId;
 
     private List<Long> departmentIdList;
-
-    private Long userId;
 
 }

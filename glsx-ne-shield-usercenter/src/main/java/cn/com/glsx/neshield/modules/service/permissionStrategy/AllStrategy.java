@@ -1,18 +1,22 @@
 package cn.com.glsx.neshield.modules.service.permissionStrategy;
 
+import cn.com.glsx.admin.common.constant.Constants;
+import cn.com.glsx.neshield.common.exception.UserCenterException;
+import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Organization;
+import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
+import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.service.DepartmentService;
-import cn.com.glsx.neshield.modules.entity.Department;
-import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.google.common.collect.Lists;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -37,15 +41,22 @@ public class AllStrategy implements PermissionStrategy {
     @Resource
     private DepartmentService departmentService;
 
-    private static final int IS_ROOT_DEPARTMENT = 1;
+    @Override
+    public List<Department> permissionDepartments() {
+        throw new UserCenterException("权限错误调用，请检查");
+    }
 
-    private static final int IS_NOT_ROOT_DEPARTMENT = 0;
+    @Override
+    public List<User> permissionUsers() {
+        throw new UserCenterException("权限错误调用，请检查");
+    }
 
     /**
      * 1 all
      * * 1.1 root 找所有根部门
      * * 1.2 非root 根据rootId找子部门list
      * * 封装-不过滤-返回
+     *
      * @param rootId
      * @return
      */
@@ -55,7 +66,7 @@ public class AllStrategy implements PermissionStrategy {
         List<Department> departmentParamList;
 
         if (rootId == null) {
-            departmentParamList = departmentMapper.selectDepartmentList(new Department().setIsRoot(IS_ROOT_DEPARTMENT));
+            departmentParamList = departmentMapper.selectDepartmentList(new Department().setIsRoot(Constants.IS_ROOT_DEPARTMENT));
         } else {
             departmentParamList = organizationMapper.selectChildrenList(new OrganizationSearch().setRootId(rootId));
         }
@@ -83,38 +94,48 @@ public class AllStrategy implements PermissionStrategy {
         List<Long> nameDepartmentIdList = nameDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
 
         List<Organization> superiorOrgList = organizationMapper.selectList(new OrganizationBO().setSubIdList(nameDepartmentIdList));
-        //所有部门id
+        //上级部门id
         List<Long> allDepartmentIdList = superiorOrgList.stream().map(Organization::getSuperiorId).collect(Collectors.toList());
+
+        CollectionUtils.addAll(allDepartmentIdList, nameDepartmentIdList);
 
         List<Department> allDepartmentList = departmentMapper.selectByIds(allDepartmentIdList);
         //所有组织链
         List<Organization> organizationList = organizationMapper.selectList(new OrganizationBO().setSubIdList(allDepartmentIdList).setSuperiorIdList(allDepartmentIdList));
-
         //根节点
         List<Organization> rootList = organizationMapper.selectRootIdList(nameDepartmentIdList);
+
         Set<Long> rootIds = rootList.stream().map(Organization::getSuperiorId).collect(Collectors.toSet());
 
-        Map<Long, Organization> organizationMap = organizationList.stream().filter(m -> m.getDepth() == 1).
-                collect(Collectors.toMap(Organization::getSubId, treeModel -> treeModel));
+        Map<Long, Organization> organizationMap = organizationList.stream()
+                .filter(m -> m.getDepth() == 0 || m.getDepth() == 1)
+                .collect(Collectors.toMap(Organization::getSubId, treeModel -> treeModel));
 
         List<Long> departmentIdList = allDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
-        Map<Long, Long> recursiveDepartmentUserMap = departmentService.countRecursiveDepartmentUser(departmentIdList);
+
+        Map<Long, Integer> recursiveDepartmentUserMap = departmentService.countRecursiveDepartmentUser(departmentIdList);
 
         List<OrgModel> modelList = allDepartmentList.stream().map(dep -> {
             OrgModel orgModel = new OrgModel();
-            Organization organization = organizationMap.get(dep.getId());
-            if (organization != null) {
-                orgModel.setParentId(organization.getSuperiorId());
+            Organization org = organizationMap.get(dep.getId());
+            if (org != null) {
+                if (org.getSuperiorId().equals(org.getSubId())) {
+                    orgModel.setParentId(0L);
+                } else {
+                    orgModel.setParentId(org.getSuperiorId());
+                }
             }
             orgModel.setOrderNum(dep.getOrderNum());
-            orgModel.setId(dep.getId());
-            orgModel.setDeptName(dep.getDepartmentName());
+            orgModel.setOrgId(dep.getId());
+            orgModel.setOrgName(dep.getDepartmentName());
             orgModel.setTenantId(dep.getTenantId());
-            Long userNumber = recursiveDepartmentUserMap.get(dep.getId());
+            Integer userNumber = recursiveDepartmentUserMap.get(dep.getId());
             orgModel.setUserNumber(userNumber);
             return orgModel;
         }).collect(Collectors.toList());
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrderNum)).collect(Collectors.toList());
+
+        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrder)).collect(Collectors.toList());
+
         List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertClosure(orgTreeModelList, Lists.newArrayList(rootIds));
 
         return orgTree;

@@ -1,10 +1,13 @@
 package cn.com.glsx.neshield.modules.service.permissionStrategy;
 
 import cn.com.glsx.auth.utils.ShieldContextHolder;
+import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Organization;
+import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
+import cn.com.glsx.neshield.modules.mapper.UserMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
@@ -13,6 +16,7 @@ import cn.com.glsx.neshield.modules.service.DepartmentService;
 import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.google.common.collect.Lists;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -29,6 +33,9 @@ import java.util.stream.Collectors;
 public class OneselfStrategy implements PermissionStrategy {
 
     @Resource
+    private UserMapper userMapper;
+
+    @Resource
     private OrganizationMapper organizationMapper;
 
     @Resource
@@ -36,6 +43,19 @@ public class OneselfStrategy implements PermissionStrategy {
 
     @Resource
     private DepartmentService departmentService;
+
+    @Override
+    public List<Department> permissionDepartments() {
+        throw new UserCenterException("权限错误调用，请检查");
+    }
+
+    @Override
+    public List<User> permissionUsers() {
+        List<User> list = Lists.newArrayList();
+        User user = userMapper.selectById(ShieldContextHolder.getUserId());
+        CollectionUtils.addAll(list, user);
+        return list;
+    }
 
     /**
      * 2 self 或 selfDepartment
@@ -62,7 +82,7 @@ public class OneselfStrategy implements PermissionStrategy {
         if (rootId == null) {
             Organization organization = organizationMapper.selectRootPath(userDeptId);
 
-            Department department = departmentMapper.selectByPrimaryKey(organization.getSuperiorId());
+            Department department = departmentMapper.selectById(organization.getSuperiorId());
 
             departmentParamList.add(department);
         } else {
@@ -74,7 +94,7 @@ public class OneselfStrategy implements PermissionStrategy {
 
                 Organization organization = organizationMapper.selectOne(new Organization().setDepth(depth).setSubId(userDeptId));
 
-                Department department = departmentMapper.selectByPrimaryKey(organization.getSuperiorId());
+                Department department = departmentMapper.selectById(organization.getSuperiorId());
 
                 departmentParamList.add(department);
             } else {
@@ -84,7 +104,7 @@ public class OneselfStrategy implements PermissionStrategy {
 
         departmentDTOList = departmentService.getDepartmentAssembled(departmentParamList, false, false);
 
-        departmentDTOList.forEach(dep -> dep.setUserNumber(1L));
+        departmentDTOList.forEach(dep -> dep.setUserNumber(1));
 
         departmentDTOList.forEach(dep -> {
             if (!dep.getId().equals(userDeptId)) {
@@ -103,12 +123,12 @@ public class OneselfStrategy implements PermissionStrategy {
         Long userDeptId = ShieldContextHolder.getDepartment().getDeptId();
 
         Department selfDepartment = departmentMapper.selectByPrimaryKey(userDeptId);
-        if (selfDepartment == null){
+        if (selfDepartment == null) {
             return list;
         }
 
         String selfDepartmentName = selfDepartment.getDepartmentName();
-        if (!selfDepartmentName.contains(departmentName)){
+        if (!selfDepartmentName.contains(departmentName)) {
             return list;
         }
 
@@ -138,13 +158,13 @@ public class OneselfStrategy implements PermissionStrategy {
             if (organization != null) {
                 orgModel.setParentId(organization.getSuperiorId());
             }
-            orgModel.setId(dep.getId());
-            orgModel.setDeptName(dep.getDepartmentName());
+            orgModel.setOrgId(dep.getId());
+            orgModel.setOrgName(dep.getDepartmentName());
             orgModel.setTenantId(dep.getTenantId());
-            orgModel.setUserNumber(1L);
+            orgModel.setUserNumber(1);
             return orgModel;
         }).collect(Collectors.toList());
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrderNum)).collect(Collectors.toList());
+        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrder)).collect(Collectors.toList());
         List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertClosure(orgTreeModelList, Lists.newArrayList(rootIds));
 
         return orgTree;

@@ -9,6 +9,7 @@
         <result column="permission_tag" jdbcType="VARCHAR" property="permissionTag"/>
         <result column="parent_id" jdbcType="INTEGER" property="parentId"/>
         <result column="type" jdbcType="TINYINT" property="type"/>
+        <result column="icon" jdbcType="VARCHAR" property="icon"/>
         <result column="order_num" jdbcType="INTEGER" property="orderNum"/>
         <result column="enable_status" jdbcType="TINYINT" property="enableStatus"/>
         <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
@@ -17,7 +18,7 @@
         <result column="updated_date" jdbcType="TIMESTAMP" property="updatedDate"/>
         <result column="updated_by" jdbcType="INTEGER" property="updatedBy"/>
     </resultMap>
-    <resultMap id="DTOResultMap" type="cn.com.glsx.neshield.modules.model.MenuDTO">
+    <resultMap id="DTOResultMap" type="cn.com.glsx.neshield.modules.model.view.MenuDTO">
         <id column="id" jdbcType="INTEGER" property="id"/>
         <result column="menu_no" jdbcType="INTEGER" property="menuNo"/>
         <result column="menu_name" jdbcType="VARCHAR" property="menuName"/>
@@ -25,12 +26,13 @@
         <result column="permission_tag" jdbcType="VARCHAR" property="permissionTag"/>
         <result column="parent_id" jdbcType="INTEGER" property="parentId"/>
         <result column="type" jdbcType="TINYINT" property="type"/>
+        <result column="icon" jdbcType="VARCHAR" property="icon"/>
         <result column="order_num" jdbcType="INTEGER" property="orderNum"/>
         <result column="enable_status" jdbcType="TINYINT" property="enableStatus"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, menu_no, menu_name, front_route, permission_tag, parent_id, `type`, order_num, enable_status,
+        id, menu_no, menu_name, front_route, permission_tag, parent_id, `type`, icon, order_num, enable_status,
         del_flag, created_date, created_by, updated_date, updated_by
     </sql>
 
@@ -60,14 +62,15 @@
     </select>
 
     <select id="selectMenuFullTree" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
-        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type
+        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type,m.icon
         from t_menu m
         where m.del_flag = 0
         and m.enable_status = 1
     </select>
 
     <select id="selectMenuPermTree" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
-        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type
+        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,
+        m.type,m.front_route frontRoute,m.icon
         from t_menu m,t_role_menu rm
         where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
         <if test="roleIds != null and roleIds.size() > 0">
@@ -76,10 +79,16 @@
                 #{roleId}
             </foreach>
         </if>
+        <if test="menuTypes != null and menuTypes.size() > 0">
+            and m.type in
+            <foreach collection="menuTypes" item="type" open="(" close=")" separator=",">
+                #{type}
+            </foreach>
+        </if>
     </select>
 
     <select id="selectMenuTreeByParentId" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
-        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type
+        select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type,m.icon
         from t_menu m,t_role_menu rm
         where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
         <if test="roleIds != null and roleIds.size() > 0">
@@ -100,6 +109,7 @@
         m.permission_tag,
         m.parent_id,
         m.`type`,
+        m.icon,
         m.order_num,
         m.enable_status,
         m.del_flag,

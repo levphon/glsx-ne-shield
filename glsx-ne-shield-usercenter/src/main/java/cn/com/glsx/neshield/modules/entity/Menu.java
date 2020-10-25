@@ -15,16 +15,15 @@ import java.util.Date;
 @Accessors(chain = true)
 public class Menu extends BaseEntity {
 
-    public Menu(boolean addOrUpdate) {
-        SyntheticUser user = ShieldContextHolder.getUser();
-        if (addOrUpdate) {
+    public Menu() {
+        super();
+    }
+
+    public Menu(boolean isAdd) {
+        if (isAdd) {
+            SyntheticUser user = ShieldContextHolder.getUser();
             this.setCreatedBy(user.getUserId());
-            this.setUpdatedBy(user.getUserId());
             this.setCreatedDate(new Date());
-            this.setUpdatedDate(new Date());
-        } else {
-            this.setUpdatedBy(user.getUserId());
-            this.setUpdatedDate(new Date());
         }
     }
 
@@ -56,6 +55,11 @@ public class Menu extends BaseEntity {
      * 类型 1目录，2菜单，3按钮
      */
     private Integer type;
+
+    /**
+     * 图标
+     */
+    private String icon;
 
     /**
      * 父菜单id

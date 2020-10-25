@@ -1,34 +1,24 @@
-package cn.com.glsx.neshield.modules.model.param;
+package cn.com.glsx.neshield.modules.model.view;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import lombok.experimental.Accessors;
 
-import javax.validation.constraints.NotEmpty;
-import java.io.Serializable;
+import java.util.Date;
 
 /**
- * @author: taoyr
- **/
-@Accessors(chain = true)
+ * @author payu
+ */
 @Data
-public class UserParam implements Serializable {
+public class UserDTO {
 
     private Long id;
 
-    /**
-     * 用户名
-     */
-    @NotEmpty
+    private String account;
+
     private String username;
 
-    /**
-     * 密码
-     */
-    private String password;
+    private String departmentName;
 
-    /**
-     * 手机号
-     */
     private String phoneNumber;
 
     /**
@@ -40,11 +30,6 @@ public class UserParam implements Serializable {
      * 上级id
      */
     private Long superiorId;
-
-    /**
-     * 账户名
-     */
-    private String account;
 
     /**
      * 邮箱
@@ -64,5 +49,12 @@ public class UserParam implements Serializable {
     private Integer enableStatus;
 
     private Long roleId;
+
+    private String roleName;
+
+    private String superiorName;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date createdDate;
 
 }

@@ -12,6 +12,6 @@ public class DepartmentUserCount {
 
     private Long departmentId;
 
-    private Long userNumber;
+    private Integer userNumber;
 
 }

@@ -4,12 +4,12 @@ import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.modules.BaseController;
 import cn.com.glsx.neshield.modules.converter.MenuConverter;
 import cn.com.glsx.neshield.modules.entity.Menu;
-import cn.com.glsx.neshield.modules.model.MenuBO;
-import cn.com.glsx.neshield.modules.model.MenuDTO;
 import cn.com.glsx.neshield.modules.model.MenuModel;
 import cn.com.glsx.neshield.modules.model.export.MenuExport;
+import cn.com.glsx.neshield.modules.model.param.MenuBO;
 import cn.com.glsx.neshield.modules.model.param.MenuSearch;
 import cn.com.glsx.neshield.modules.model.param.UserSearch;
+import cn.com.glsx.neshield.modules.model.view.MenuDTO;
 import cn.com.glsx.neshield.modules.service.MenuService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -66,21 +66,37 @@ public class MenuController extends BaseController {
         EasyExcelUtils.writeExcel(response, list, "菜单_" + DateUtils.formatSerial(new Date()), "Sheet1", MenuExport.class);
     }
 
-    @GetMapping("/fulltree")
-    public R getMenuFullTree() {
-        List<MenuModel> menuTree = menuService.getMenuFullTreeWithChecked(ShieldContextHolder.getRoleIds());
-        return R.ok().data(menuTree);
-    }
-
+    /**
+     * 用户登录加载系统资源
+     *
+     * @return
+     */
     @GetMapping("/permtree")
     public R getMenuPermTree() {
         List<MenuModel> menuTree = menuService.getMenuTree(ShieldContextHolder.getRoleIds());
         return R.ok().data(menuTree);
     }
 
+    /**
+     * 子页面加载资源
+     *
+     * @return
+     */
     @GetMapping("/subtree")
     public R getMenuSubtree(@RequestParam("parentId") Long parentId) {
         List<MenuModel> menuTree = menuService.getMenuTreeByParentId(parentId, ShieldContextHolder.getRoleIds());
+        return R.ok().data(menuTree);
+    }
+
+    /**
+     * 新增、编辑角色时加载菜单树
+     *
+     * @param roleId
+     * @return
+     */
+    @GetMapping("/checkedtree")
+    public R getMenuFullTree(@RequestParam(value = "roleId", required = false) Long roleId) {
+        List<MenuModel> menuTree = menuService.getMenuFullTreeWithChecked(ShieldContextHolder.getRoleIds(), roleId);
         return R.ok().data(menuTree);
     }
 
@@ -106,7 +122,7 @@ public class MenuController extends BaseController {
         return R.ok().data(menuDTO);
     }
 
-    @SysLog
+    @SysLog(module = MODULE, action = OperateType.DELETE)
     @GetMapping("/delete")
     public R delete(@RequestParam("menuId") Long id) {
         menuService.logicDeleteById(id);

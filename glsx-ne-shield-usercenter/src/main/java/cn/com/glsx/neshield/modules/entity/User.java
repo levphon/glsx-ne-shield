@@ -15,21 +15,15 @@ import java.util.Date;
 @Table(name = "t_user")
 public class User extends BaseEntity {
 
-
     public User() {
         super();
     }
 
-    public User(boolean addOrUpdate) {
-        SyntheticUser user = ShieldContextHolder.getUser();
-        if (addOrUpdate) {
+    public User(boolean isAdd) {
+        if (isAdd) {
+            SyntheticUser user = ShieldContextHolder.getUser();
             this.setCreatedBy(user.getUserId());
-            this.setUpdatedBy(user.getUserId());
             this.setCreatedDate(new Date());
-            this.setUpdatedDate(new Date());
-        } else {
-            this.setUpdatedBy(user.getUserId());
-            this.setUpdatedDate(new Date());
         }
     }
 
@@ -101,5 +95,8 @@ public class User extends BaseEntity {
     private Integer enableStatus;
 
     private String salt;
+
+    @Column(name = "is_admin")
+    private boolean isAdmin;
 
 }

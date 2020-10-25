@@ -14,7 +14,16 @@
         id, tenant_name, del_flag, created_date, created_by, updated_date, updated_by
     </sql>
 
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_tenant
+        where del_flag = 0
+        and id = #{id}
+    </select>
+
     <update id="logicDeleteById">
         update t_tenant set del_flag = -1 where id = #{id}
     </update>
+
 </mapper>

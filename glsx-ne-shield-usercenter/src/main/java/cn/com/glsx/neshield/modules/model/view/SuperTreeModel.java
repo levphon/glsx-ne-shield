@@ -15,7 +15,8 @@ public class SuperTreeModel implements Serializable {
 
     private Long id;
     private String label;
-    private Long order = 0L;
+    private Integer order = 0;
+    private boolean isRoot;
     private List<SuperTreeModel> children;
 
 }

@@ -21,16 +21,11 @@ public class RoleMenu extends BaseEntity {
         super();
     }
 
-    public RoleMenu(boolean addOrUpdate) {
-        SyntheticUser user = ShieldContextHolder.getUser();
-        if (addOrUpdate) {
+    public RoleMenu(boolean isAdd) {
+        if (isAdd) {
+            SyntheticUser user = ShieldContextHolder.getUser();
             this.setCreatedBy(user.getUserId());
-            this.setUpdatedBy(user.getUserId());
             this.setCreatedDate(new Date());
-            this.setUpdatedDate(new Date());
-        } else {
-            this.setUpdatedBy(user.getUserId());
-            this.setUpdatedDate(new Date());
         }
     }
 

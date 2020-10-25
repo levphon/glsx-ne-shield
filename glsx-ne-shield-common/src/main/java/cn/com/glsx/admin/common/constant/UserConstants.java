@@ -24,6 +24,7 @@ public interface UserConstants extends SysConstants {
                 return "本人";
             }
 
+            @Override
             public String getBeanName(){
                 return "oneselfStrategy";
             }
@@ -39,6 +40,7 @@ public interface UserConstants extends SysConstants {
                 return "本人及下属";
             }
 
+            @Override
             public String getBeanName(){
                 return "subOrdinateStrategy";
             }
@@ -54,6 +56,7 @@ public interface UserConstants extends SysConstants {
                 return "本部门";
             }
 
+            @Override
             public String getBeanName(){
                 return "selfDepartmentStrategy";
             }
@@ -69,6 +72,7 @@ public interface UserConstants extends SysConstants {
                 return "本部门及下属部门";
             }
 
+            @Override
             public String getBeanName(){
                 return "subDepartmentStrategy";
             }
@@ -84,6 +88,7 @@ public interface UserConstants extends SysConstants {
                 return "全部";
             }
 
+            @Override
             public String getBeanName(){
                 return "allStrategy";
             }
@@ -114,7 +119,7 @@ public interface UserConstants extends SysConstants {
     /**
      * 角色可见度（0=共享，1=系统管理员，2=指定租户）
      */
-    enum roleVisibility implements SysConstants {
+    enum RoleVisibility implements SysConstants {
         share {
             @Override
             public Integer getCode() {
