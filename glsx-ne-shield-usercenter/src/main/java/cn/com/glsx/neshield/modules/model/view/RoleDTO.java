@@ -1,8 +1,9 @@
 package cn.com.glsx.neshield.modules.model.view;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
-import java.util.List;
+import java.util.Date;
 
 @Data
 public class RoleDTO {
@@ -35,8 +36,13 @@ public class RoleDTO {
     private Integer roleVisibility;
 
     /**
-     * 角色租户
+     * 角色可见租户
      */
-    private List<DepartmentDTO> roleTenants;
+    private String roleTenants;
+
+    private Integer enableStatus;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date createdDate;
 
 }

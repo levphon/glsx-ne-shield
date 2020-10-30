@@ -3,6 +3,7 @@ package cn.com.glsx.neshield.modules.mapper;
 import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Organization;
 import cn.com.glsx.neshield.modules.model.OrgModel;
+import cn.com.glsx.neshield.modules.model.OrgSuperiorModel;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
@@ -11,6 +12,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface OrganizationMapper extends CommonBaseMapper<Organization> {
@@ -40,20 +42,20 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
     int deleteOrganizationPath(Long nodeId);
 
     /**
+     * 获取父级id（含自己）
+     *
+     * @param search
+     * @return
+     */
+    List<OrgSuperiorModel> selectSuperiorIdsByOrg(OrgTreeSearch search);
+
+    /**
      * 获取组织机构
      *
      * @param search
      * @return
      */
     List<OrgModel> selectOrgList(OrgTreeSearch search);
-
-    /**
-     * 获取父级id（含自己）
-     *
-     * @param name
-     * @return
-     */
-    List<String> selectSuperiorIdsByName(@Param("name") String name);
 
     /**
      * 找到所有子节点

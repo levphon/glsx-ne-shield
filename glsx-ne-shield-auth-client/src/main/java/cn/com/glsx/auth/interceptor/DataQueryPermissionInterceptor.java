@@ -1,9 +1,7 @@
 package cn.com.glsx.auth.interceptor;
 
-import cn.com.glsx.auth.model.ParameterAnnotationHolder;
 import cn.com.glsx.auth.model.RequireDataPermissions;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
-import com.glsx.plat.common.utils.ReflectUtils;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.JSQLParserException;
@@ -19,7 +17,6 @@ import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.executor.statement.RoutingStatementHandler;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
@@ -44,18 +41,24 @@ import java.sql.Connection;
 import java.util.List;
 
 /**
+ * 处理针对某一或某些特定数据查询操作作数据权限校验
+ * 1、获取用户角色，得到数据权限范围类型
+ * 2、得到当前操作用户信息和部门信息
+ * 3、根据数据创建者id，得到对应用户或部门
+ * 4、比较2，3判断该数据是否有权查询
+ *
  * @author: taoyr
  **/
 @Slf4j
-@Component
-@Intercepts({
-        @Signature(
-                type = StatementHandler.class,
-                method = "prepare",
-                args = {Connection.class, Integer.class}
-        )
-})
-public class QueryDataPermissionInterceptor implements Interceptor {
+//@Component
+//@Intercepts({
+//        @Signature(
+//                type = StatementHandler.class,
+//                method = "prepare",
+//                args = {Connection.class, Integer.class}
+//        )
+//})
+public class DataQueryPermissionInterceptor implements Interceptor {
 
     private static final ObjectFactory DEFAULT_OBJECT_FACTORY = new DefaultObjectFactory();
     private static final ObjectWrapperFactory DEFAULT_OBJECT_WRAPPER_FACTORY = new DefaultObjectWrapperFactory();
@@ -63,6 +66,7 @@ public class QueryDataPermissionInterceptor implements Interceptor {
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
+
         Object target = invocation.getTarget();
 
         if (target instanceof RoutingStatementHandler) {
@@ -110,7 +114,6 @@ public class QueryDataPermissionInterceptor implements Interceptor {
             }
         }
 
-
         return invocation.proceed();
     }
 
@@ -147,6 +150,7 @@ public class QueryDataPermissionInterceptor implements Interceptor {
 
     /**
      * 处理where条件
+     *
      * @param userId
      * @param plain
      * @param mainTableName
@@ -168,6 +172,7 @@ public class QueryDataPermissionInterceptor implements Interceptor {
 
     /**
      * 处理排序条件
+     *
      * @param plain
      * @param mainTableName
      * @throws JSQLParserException
@@ -186,6 +191,7 @@ public class QueryDataPermissionInterceptor implements Interceptor {
 
     /**
      * 增加join语句
+     *
      * @param accessField
      * @param plain
      * @param mainTableName

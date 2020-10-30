@@ -23,7 +23,7 @@ import java.io.PrintWriter;
  */
 @Slf4j
 @Component
-public class AuthInterceptor implements HandlerInterceptor {
+public class WebRequestAuthorizeInterceptor implements HandlerInterceptor {
 
     @Autowired
     private AuthFeignClient authFeignClient;

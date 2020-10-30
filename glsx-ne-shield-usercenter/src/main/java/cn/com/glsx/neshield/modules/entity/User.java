@@ -89,7 +89,7 @@ public class User extends BaseEntity {
      * 岗位
      */
     @Column(name = "position")
-    private Long position;
+    private String position;
 
     @Column(name = "enable_status")
     private Integer enableStatus;

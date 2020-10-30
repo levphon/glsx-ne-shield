@@ -9,6 +9,6 @@ import lombok.Data;
 @Data
 public class RoleSearch extends Page {
 
-    private String name;
+    private String roleName;
 
 }

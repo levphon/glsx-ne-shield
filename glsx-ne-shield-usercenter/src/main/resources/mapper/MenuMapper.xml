@@ -36,6 +36,22 @@
         del_flag, created_date, created_by, updated_date, updated_by
     </sql>
 
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_menu
+        where id = #{id}
+        and del_flag = 0
+    </select>
+
+    <select id="selectByMenuNo" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_menu
+        where menu_no = #{menuNo}
+        and del_flag = 0
+    </select>
+
     <update id="logicDeleteById">
         update t_menu set del_flag = -1 where id = #{id}
     </update>
@@ -46,7 +62,7 @@
         from t_menu
         where del_flag = 0
         <if test="name != null and name != ''">
-            and name LIKE CONCAT('%',#{name},'%')
+            and menu_name LIKE CONCAT('%',#{name},'%')
         </if>
         <if test="status != null">
             and enable_status = #{status}
@@ -72,11 +88,20 @@
         select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,
         m.type,m.front_route frontRoute,m.icon
         from t_menu m,t_role_menu rm
-        where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
+        where m.id = rm.menu_id
+        and m.del_flag = 0
+        and rm.del_flag = 0
+        and m.enable_status = 1
         <if test="roleIds != null and roleIds.size() > 0">
             and rm.role_id in
             <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
                 #{roleId}
+            </foreach>
+        </if>
+        <if test="menuIds != null and menuIds.size() > 0">
+            and m.id in
+            <foreach collection="menuIds" item="menuId" open="(" close=")" separator=",">
+                #{menuId}
             </foreach>
         </if>
         <if test="menuTypes != null and menuTypes.size() > 0">
@@ -90,14 +115,17 @@
     <select id="selectMenuTreeByParentId" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
         select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,m.type,m.icon
         from t_menu m,t_role_menu rm
-        where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
+        where m.id = rm.menu_id
+        and m.del_flag = 0
+        and rm.del_flag = 0
+        and m.enable_status = 1
         <if test="roleIds != null and roleIds.size() > 0">
             and rm.role_id in
             <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
                 #{roleId}
             </foreach>
         </if>
-        and m.parent_id = #{parentId}
+        and m.parent_id = #{parentNo}
     </select>
 
     <select id="selectMenuList" resultMap="BaseResultMap">
@@ -118,7 +146,10 @@
         m.updated_date,
         m.updated_by
         from t_menu m,t_role_menu rm
-        where m.id = rm.menu_id and m.del_flag = 0 and rm.del_flag = 0 and m.enable_status = 1
+        where m.id = rm.menu_id
+        and m.del_flag = 0
+        and rm.del_flag = 0
+        and m.enable_status = 1
         <if test="roleIds != null and roleIds.size() > 0">
             and rm.role_id in
             <foreach collection="roleIds" item="roleId" open="(" close=")" separator=",">
@@ -130,12 +161,24 @@
     <select id="selectMenuListByParentId" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
-        from t_menu where parent_id = #{parentId} and del_flag = 0
+        from t_menu
+        where parent_id = #{parentNo}
+        and del_flag = 0
     </select>
 
     <select id="selectMenuListByLikeParentNo" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
-        from t_menu where menu_no like #{parentMenuNo} and del_flag = 0
+        from t_menu
+        where menu_no like #{parentNo}
+        and del_flag = 0
+    </select>
+
+    <select id="selectChildrenCntByParentId" resultType="java.lang.Integer">
+        select
+        count(1)
+        from t_menu
+        where parent_id = #{parentNo}
+        and del_flag = 0
     </select>
 </mapper>

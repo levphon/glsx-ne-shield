@@ -42,8 +42,8 @@
         <include refid="Base_Column_List"/>
         from t_role
         where del_flag = 0
-        <if test="name != null">
-            and role_name like concat('%',#{name},'%')
+        <if test="roleName != null and roleName != ''">
+            and role_name like concat('%',#{roleName},'%')
         </if>
         order by id desc
     </select>

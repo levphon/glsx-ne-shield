@@ -23,12 +23,12 @@ public interface UserMapper extends CommonBaseMapper<User> {
 
     List<User> selectList(UserSearch search);
 
-    int logicDeleteById(@Param("id") Long id);
-
-    int countByCriterial(UserBO userBO);
+    Integer countByCriterial(UserBO userBO);
 
     List<DepartmentCount> countDepartmentsUser(@Param("departmentIds") List<Long> departmentIds);
 
     List<User> selectDepartmentsSubordinate(UserSearch search);
+
+    int logicDeleteById(@Param("id") Long id);
 
 }

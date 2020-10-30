@@ -13,7 +13,7 @@ public class OrganizationSearch extends Page {
 
     private boolean forPage;
 
-    private String organizationName;
+    private String orgName;
 
     private Integer enableStatus;
 

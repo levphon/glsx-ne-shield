@@ -18,6 +18,10 @@ public interface SysDictTypeMapper extends CommonBaseMapper<SysDictType> {
 
     List<DictTypeDTO> selectAllDictType2();
 
+    SysDictType selectById(@Param("id") Long id);
+
+    SysDictType selectByType(@Param("type") String dictType);
+
     int logicDeleteById(@Param("id") Long id);
 
 }

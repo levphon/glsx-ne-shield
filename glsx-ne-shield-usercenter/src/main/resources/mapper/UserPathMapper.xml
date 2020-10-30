@@ -62,7 +62,8 @@
         tu.department_id departmentId,count(*) userNumber
         from t_user tu, t_user_path tup
         where tu.del_flag = 0 and tup.del_flag = 0
-        and tup.superior_id = #{userId} and tup.sub_id = tu.department_id
+        and tup.sub_id = tu.id
+        and tup.superior_id = #{userId}
   </select>
 
     <select id="selectUserSubordinateList" resultMap="BaseResultMap">

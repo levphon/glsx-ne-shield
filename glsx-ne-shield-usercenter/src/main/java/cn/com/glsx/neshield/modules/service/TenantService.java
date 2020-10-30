@@ -16,7 +16,7 @@ public class TenantService {
     private TenantMapper tenantMapper;
 
     public Tenant getTenantById(Long tenantId){
-        return tenantMapper.selectByPrimaryKey(tenantId);
+        return tenantMapper.selectById(tenantId);
     }
 
 }

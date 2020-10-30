@@ -12,6 +12,6 @@ import java.lang.annotation.*;
 @Target(ElementType.METHOD)
 public @interface RequireFunctionPermissions {
 
-    FunctionPermissionType functionPermissionType();
+    FunctionPermissionType permissionType();
 
 }

@@ -44,7 +44,7 @@ public class UserDTO {
     /**
      * 岗位
      */
-    private Long position;
+    private String position;
 
     private Integer enableStatus;
 

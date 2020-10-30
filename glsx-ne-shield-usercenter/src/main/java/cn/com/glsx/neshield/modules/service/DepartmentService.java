@@ -58,7 +58,6 @@ public class DepartmentService {
     public List<Department> getCurrentUserDepartment() {
         Long roleId = ShieldContextHolder.getRoleId();
         Long userId = ShieldContextHolder.getUserId();
-
         return getRoleDepartment(userId, roleId);
     }
 
@@ -85,25 +84,25 @@ public class DepartmentService {
         }
 
         if (oneself.getCode().equals(role.getRolePermissionType())) {
-            User user = userMapper.selectByPrimaryKey(userId);
+            User user = userMapper.selectById(userId);
             Long departmentId = user.getDepartmentId();
 
-            Department department = departmentMapper.selectByPrimaryKey(departmentId);
+            Department department = departmentMapper.selectById(departmentId);
             departmentList.add(department);
 
             return departmentList;
         } else if (all.getCode().equals(role.getRolePermissionType())) {
             return departmentMapper.selectAllNotDel();
         } else if (selfDepartment.getCode().equals(role.getRolePermissionType())) {
-            User user = userMapper.selectByPrimaryKey(userId);
+            User user = userMapper.selectById(userId);
             Long departmentId = user.getDepartmentId();
 
-            Department department = departmentMapper.selectByPrimaryKey(departmentId);
+            Department department = departmentMapper.selectById(departmentId);
             departmentList.add(department);
 
             return departmentList;
         } else if (subDepartment.getCode().equals(role.getRolePermissionType())) {
-            User user = userMapper.selectByPrimaryKey(userId);
+            User user = userMapper.selectById(userId);
 
             Long departmentId = user.getDepartmentId();
 
@@ -125,7 +124,7 @@ public class DepartmentService {
     }
 
     public Department getDepartmentById(Long departmentId) {
-        return departmentMapper.selectByPrimaryKey(departmentId);
+        return departmentMapper.selectById(departmentId);
     }
 
     /**
@@ -143,14 +142,14 @@ public class DepartmentService {
             //只能看自己公司的
             Long rootDepartmentId = ShieldContextHolder.getTenantId();
 
-            Department department = departmentMapper.selectByPrimaryKey(rootDepartmentId);
+            Department department = departmentMapper.selectById(rootDepartmentId);
 
             rootList.add(department);
         } else {
             Department department = new Department()
                     .setIsRoot(Constants.IS_ROOT_DEPARTMENT)
                     .setEnableStatus(search.getEnableStatus())
-                    .setDepartmentName(search.getOrganizationName());
+                    .setDepartmentName(search.getOrgName());
             department.setDelFlag(0);
 
             if (search.isForPage()) {
@@ -199,7 +198,10 @@ public class DepartmentService {
             if (hasUserNumber) {
                 Map<Long, Integer> recursiveDepartmentUser = countRecursiveDepartmentUser(departmentIds);
 
-                departmentDTOList.forEach(dep -> dep.setUserNumber(recursiveDepartmentUser.get(dep.getId())));
+                departmentDTOList.forEach(dep -> {
+                    Integer number = recursiveDepartmentUser.get(dep.getId());
+                    dep.setUserNumber(number == null ? 0 : number);
+                });
             }
         }
         return departmentDTOList;
@@ -226,19 +228,21 @@ public class DepartmentService {
         Map<Long, Integer> departmentUserNumberMap = departmentCountList.stream().collect(Collectors.toMap(DepartmentCount::getDepartmentId, DepartmentCount::getUserNumber));
 
         for (Map.Entry<Long, List<Long>> entry : departmentSubIdListMap.entrySet()) {
+            Long parentId = entry.getKey();
             List<Long> subIdList = entry.getValue();
 
-            Integer departmentUserNumber = 0;
+            if (!subIdList.contains(parentId)) {
+                subIdList.add(parentId);
+            }
 
+            Integer departmentUserNumber = 0;
             for (Long subId : subIdList) {
-                Integer subUserNumber = departmentUserNumberMap.get(subId);
-                if (subUserNumber != null) {
-                    departmentUserNumber += subUserNumber;
+                if (departmentUserNumberMap.get(subId) != null) {
+                    departmentUserNumber += departmentUserNumberMap.get(subId);
                 }
             }
             departmentUserMap.put(entry.getKey(), departmentUserNumber);
         }
-
         return departmentUserMap;
     }
 

@@ -3,6 +3,7 @@ package cn.com.glsx.neshield.modules.service;
 import cn.com.glsx.admin.common.constant.Constants;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.common.exception.UserCenterException;
+import cn.com.glsx.neshield.modules.converter.DepartmentConverter;
 import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Organization;
 import cn.com.glsx.neshield.modules.entity.Tenant;
@@ -19,6 +20,7 @@ import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import cn.com.glsx.neshield.modules.model.param.UserBO;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.service.permissionStrategy.PermissionStrategy;
+import com.alibaba.fastjson.JSON;
 import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.common.utils.TreeModelUtil;
@@ -28,7 +30,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +74,7 @@ public class OrganizationService {
     @Transactional
     public void addRootOrganization(OrganizationBO orgBO) {
         Tenant tenant = new Tenant(true);
-        tenant.setTenantName(orgBO.getName());
+        tenant.setTenantName(orgBO.getDepartmentName());
 
         Tenant duplicateNameTenant = tenantMapper.selectOne(tenant);
         if (duplicateNameTenant != null) {
@@ -88,7 +89,7 @@ public class OrganizationService {
         department.setTenantId(tenantId);
         department.setIsRoot(Constants.IS_ROOT_DEPARTMENT);
         department.setOrderNum(orgBO.getOrderNum());
-        department.setDepartmentName(orgBO.getName());
+        department.setDepartmentName(orgBO.getDepartmentName());
         departmentMapper.insertUseGeneratedKeys(department);
 
         Long departmentId = department.getId();
@@ -124,7 +125,7 @@ public class OrganizationService {
         department.setEnableStatus(organizationBO.getEnableStatus());
         department.setOrderNum(organizationBO.getOrderNum());
         department.setIsRoot(Constants.IS_NOT_ROOT_DEPARTMENT);
-        department.setDepartmentName(organizationBO.getName());
+        department.setDepartmentName(organizationBO.getDepartmentName());
         departmentMapper.insertUseGeneratedKeys(department);
 
         Long departmentId = department.getId();
@@ -170,37 +171,16 @@ public class OrganizationService {
         return orgTree;
     }
 
-    /**
-     * 获取上级组织id
-     *
-     * @param orgName
-     * @return
-     */
-    public List<Long> getSuperiorIdsByName(String orgName) {
-        List<String> idsStrs = organizationMapper.selectSuperiorIdsByName(orgName);
-
-        List<Long> superiorIds = new ArrayList<>();
-        idsStrs.forEach(idsStr -> {
-            if (StringUtils.isNotEmpty(idsStr)) {
-                String[] ids = idsStr.split(",");
-                for (String id : ids) {
-                    superiorIds.add(Long.valueOf(id));
-                }
-            }
-        });
-        return superiorIds;
-    }
-
     @Transactional
     public void editOrganization(OrganizationBO orgBO) {
-        Long organizationId = orgBO.getOrganizationId();
+        Long organizationId = orgBO.getId();
 
         Department department = departmentMapper.selectById(organizationId);
         if (department == null) {
             throw new UserCenterException(SystemMessage.FAILURE.getCode(), "组织部门不存在");
         }
         department.setOrderNum(orgBO.getOrderNum());
-        department.setDepartmentName(orgBO.getName());
+        department.setDepartmentName(orgBO.getDepartmentName());
         department.setEnableStatus(orgBO.getEnableStatus());
         department.setUpdatedDate(new Date());
         department.setUpdatedBy(ShieldContextHolder.getUserId());
@@ -212,7 +192,7 @@ public class OrganizationService {
             if (tenant == null) {
                 throw new UserCenterException(SystemMessage.FAILURE.getCode(), "组织租户不存在");
             }
-            tenant.setTenantName(orgBO.getName());
+            tenant.setTenantName(orgBO.getDepartmentName());
             tenantMapper.updateByPrimaryKeySelective(tenant);
         }
     }
@@ -232,7 +212,7 @@ public class OrganizationService {
         List<Organization> organizations = organizationMapper.selectByRootId(organizationId);
         List<Long> organizationIdList = organizations.stream().map(Organization::getSubId).collect(Collectors.toList());
 
-        int userNum = userMapper.countByCriterial(new UserBO().setDepartmentIds(organizationIdList));
+        Integer userNum = userMapper.countByCriterial(new UserBO().setDepartmentIds(organizationIdList));
         if (userNum > 0) {
             throw new UserCenterException(SystemMessage.FAILURE.getCode(), "该组织下仍关联有用户，请转移这部分用户后再重试");
         }
@@ -251,32 +231,21 @@ public class OrganizationService {
 
     }
 
-    /**
-     * 查看节点是否为根节点
-     *
-     * @param organizationId
-     * @return
-     */
-    public boolean isRootOrganization(Long organizationId) {
-        Organization superiorOrganization = organizationMapper.selectSuperiorOrganization(organizationId);
-
-        return superiorOrganization == null;
-    }
-
-    public OrgModel organizationInfo(Long organizationId) {
-        OrgModel orgModel = null;
-
-        Department department = departmentMapper.selectByPrimaryKey(organizationId);
+    public DepartmentDTO organizationInfo(Long organizationId) {
+        DepartmentDTO departmentDTO = null;
+        Department department = departmentMapper.selectById(organizationId);
         if (department != null) {
-            orgModel = new OrgModel();
-            orgModel.setOrgId(department.getId());
-            orgModel.setOrgName(department.getDepartmentName());
-            orgModel.setTenantId(department.getTenantId());
-
-            Tenant tenant = tenantMapper.selectByPrimaryKey(department.getTenantId());
-            orgModel.setTenantName(tenant == null ? "" : tenant.getTenantName());
+            departmentDTO = DepartmentConverter.INSTANCE.do2dto(department);
+            if (department.getIsRoot() == 0) {
+                Organization superiorOrg = organizationMapper.selectSuperiorOrganization(department.getId());
+                if (superiorOrg != null) {
+                    Department superiorDept = departmentMapper.selectById(superiorOrg.getSuperiorId());
+                    departmentDTO.setSuperiorId(superiorDept.getId());
+                    departmentDTO.setSuperiorName(superiorDept.getDepartmentName());
+                }
+            }
         }
-        return orgModel;
+        return departmentDTO;
     }
 
     public List<DepartmentDTO> childrenList(OrganizationSearch search) {
@@ -313,16 +282,18 @@ public class OrganizationService {
 
         PermissionStrategy permissionStrategy = permissionStrategyMap.get(beanName);
 
-        List<DepartmentDTO> departmentDTOList = permissionStrategy.organizationSimpleList(rootId);
+        List<DepartmentDTO> departmentDTOList = permissionStrategy.orgSimpleList(rootId);
 
         return departmentDTOList;
     }
 
     /**
-     * @param rolePermissionType
+     * @param search
      * @return
      */
-    public void permissionStrategy(Integer rolePermissionType) {
+    public List<DepartmentDTO> permissionStrategy(OrgTreeSearch search) {
+
+        Integer rolePermissionType = search.getRolePermissionType();
 
         String beanName = getBeanNameByCode(rolePermissionType);
 
@@ -345,6 +316,15 @@ public class OrganizationService {
             List<Department> list = permissionStrategy.permissionDepartments();
             log.info(String.valueOf(list.size()));
         }
+
+        List<DepartmentDTO> dtoList = permissionStrategy.orgSimpleList(search.getOrgId());
+        log.info(JSON.toJSONString(dtoList, true));
+
+
+        List list = permissionStrategy.orgTree(search);
+        log.info(JSON.toJSONString(list, true));
+
+        return dtoList;
     }
 
     public List orgTree(OrgTreeSearch search) {
@@ -357,7 +337,7 @@ public class OrganizationService {
 
         PermissionStrategy permissionStrategy = permissionStrategyMap.get(beanName);
 
-        List<? extends TreeModel> treeModels = permissionStrategy.orgTree(search.getOrgName());
+        List<? extends TreeModel> treeModels = permissionStrategy.orgTree(search);
 
         return treeModels;
     }

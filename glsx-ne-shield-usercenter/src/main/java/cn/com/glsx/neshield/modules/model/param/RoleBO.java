@@ -29,14 +29,14 @@ public class RoleBO implements Serializable {
 
     //数据权限（0=本人 1=本人及下属 2=本部门 3=本部门及下级部门 4=全部）
     @NotNull
-    private Integer permissionType;
+    private Integer rolePermissionType;
 
     //角色租户可见度（0=共享，1=系统管理员，2=指定租户）
     @NotNull
-    private Integer visibleType;
+    private Integer roleVisibility;
 
     //可见租户id列表
-    private List<Long> visibleTenant;
+    private String roleTenants;
 
     //状态（1正常 ，2停用）
     @NotNull

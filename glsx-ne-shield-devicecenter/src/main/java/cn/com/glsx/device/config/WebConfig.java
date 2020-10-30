@@ -1,6 +1,6 @@
 package cn.com.glsx.device.config;
 
-import cn.com.glsx.auth.interceptor.AuthInterceptor;
+import cn.com.glsx.auth.interceptor.WebRequestAuthorizeInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -14,7 +14,7 @@ import javax.annotation.Resource;
 public class WebConfig implements WebMvcConfigurer {
 
     @Resource
-    private AuthInterceptor authInterceptor;
+    private WebRequestAuthorizeInterceptor authInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

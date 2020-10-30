@@ -15,4 +15,6 @@ public class LoginBO {
 
     private String captcha;
 
+    private String captchaId;
+
 }

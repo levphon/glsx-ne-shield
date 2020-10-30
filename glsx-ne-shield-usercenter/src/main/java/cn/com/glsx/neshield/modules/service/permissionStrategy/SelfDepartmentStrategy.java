@@ -1,16 +1,17 @@
 package cn.com.glsx.neshield.modules.service.permissionStrategy;
 
+import cn.com.glsx.admin.common.constant.UserConstants;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.entity.Department;
-import cn.com.glsx.neshield.modules.entity.Organization;
 import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
 import cn.com.glsx.neshield.modules.mapper.UserMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
+import cn.com.glsx.neshield.modules.model.OrgSuperiorModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
-import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
+import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.UserBO;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.service.DepartmentService;
@@ -21,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-public class SelfDepartmentStrategy implements PermissionStrategy {
+public class SelfDepartmentStrategy extends PermissionStrategy {
 
     @Resource
     private OrganizationMapper organizationMapper;
@@ -48,10 +48,9 @@ public class SelfDepartmentStrategy implements PermissionStrategy {
 
     @Override
     public List<Department> permissionDepartments() {
-        List<Department> list = Lists.newArrayList();
         Department department = departmentMapper.selectById(ShieldContextHolder.getDepartmentId());
-        list.add(department);
-        return list;
+        log.info("用户{} {}部门为{}", ShieldContextHolder.getUsername(), UserConstants.RolePermitCastType.selfDepartment.getValue(), department.getDepartmentName());
+        return Lists.newArrayList(department);
     }
 
     @Override
@@ -74,106 +73,59 @@ public class SelfDepartmentStrategy implements PermissionStrategy {
      * @return
      */
     @Override
-    public List<DepartmentDTO> organizationSimpleList(Long rootId) {
-        List<DepartmentDTO> departmentDTOList = Lists.newArrayList();
+    public List<DepartmentDTO> orgSimpleList(Long rootId) {
 
-        Long userDeptId = ShieldContextHolder.getDepartment().getDeptId();
+        Long userDeptId = ShieldContextHolder.getDepartmentId();
 
         List<Department> departmentParamList = Lists.newArrayList();
 
-        if (rootId == null) {
-            Organization organization = organizationMapper.selectRootPath(userDeptId);
+        Department department = departmentMapper.selectById(userDeptId);
 
-            Department department = departmentMapper.selectByPrimaryKey(organization.getSuperiorId());
+        departmentParamList.add(department);
 
-            departmentParamList.add(department);
-        } else {
-            Organization path = organizationMapper.selectOne(new Organization().setSuperiorId(rootId).setSubId(userDeptId));
-            boolean isSup = path != null;
-
-            if (isSup) {
-                Integer depth = path.getDepth() - 1;
-
-                Organization organization = organizationMapper.selectOne(new Organization().setDepth(depth).setSubId(userDeptId));
-
-                Department department = departmentMapper.selectByPrimaryKey(organization.getSuperiorId());
-
-                departmentParamList.add(department);
-            } else {
-                return departmentDTOList;
-            }
-        }
-
-        departmentDTOList = departmentService.getDepartmentAssembled(departmentParamList, false, false);
+        List<DepartmentDTO> departmentDTOList = departmentService.getDepartmentAssembled(departmentParamList, false, false);
 
         Integer userNumber = userMapper.countByCriterial(new UserBO().setDepartmentId(userDeptId));
 
-        departmentDTOList.forEach(dep -> dep.setUserNumber(userNumber));
+        departmentDTOList.forEach(dep -> dep.setUserNumber(userNumber == null ? 0 : userNumber));
 
         departmentDTOList.forEach(dep -> {
             if (!dep.getId().equals(userDeptId)) {
                 dep.setHasChildren(true);
             }
         });
-
         return departmentDTOList;
     }
 
     @Override
-    public List<? extends TreeModel> orgTree(String departmentName) {
+    public List<? extends TreeModel> orgTree(OrgTreeSearch search) {
 
-        List<? extends TreeModel> list = Lists.newArrayList();
+        Long tenantId = ShieldContextHolder.getTenantId();
 
-        Long userDeptId = ShieldContextHolder.getDepartment().getDeptId();
+        Long deptId = ShieldContextHolder.getDepartmentId();
 
-        Department selfDepartment = departmentMapper.selectByPrimaryKey(userDeptId);
-        if (selfDepartment == null) {
-            return list;
-        }
+        search.setTenantId(tenantId);
 
-        String selfDepartmentName = selfDepartment.getDepartmentName();
-        if (!selfDepartmentName.contains(departmentName)) {
-            return list;
-        }
+        search.setOrgId(deptId);
 
-        List<Department> nameDepartmentList = Lists.newArrayList(selfDepartment);
+        List<OrgSuperiorModel> superiorModelList = organizationMapper.selectSuperiorIdsByOrg(search);
+        Set<Long> ids = getSuperiorIds(superiorModelList);
+        search.setOrgIds(ids);
 
-        //符合条件的部门idlist
-        List<Long> nameDepartmentIdList = nameDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
+        List<OrgModel> modelList = organizationMapper.selectOrgList(search);
 
-        List<Organization> superiorOrgList = organizationMapper.selectList(new OrganizationBO().setSubIdList(nameDepartmentIdList));
-        //所有部门id
-        List<Long> allDepartmentIdList = superiorOrgList.stream().map(Organization::getSuperiorId).collect(Collectors.toList());
+        List<Long> departmentIdList = modelList.stream().map(OrgModel::getOrgId).collect(Collectors.toList());
+        //计算用户数
+        Map<Long, Integer> recursiveDepartmentUserMap = departmentService.countRecursiveDepartmentUser(departmentIdList);
 
-        List<Department> allDepartmentList = departmentMapper.selectByIds(allDepartmentIdList);
-        //所有组织链
-        List<Organization> organizationList = organizationMapper.selectList(new OrganizationBO().setSubIdList(allDepartmentIdList).setSuperiorIdList(allDepartmentIdList));
+        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).collect(Collectors.toList());
 
-        //根节点
-        List<Organization> rootList = organizationMapper.selectRootIdList(nameDepartmentIdList);
-        Set<Long> rootIds = rootList.stream().map(Organization::getSuperiorId).collect(Collectors.toSet());
+        orgTreeModelList.stream().filter(otm -> otm.getId().equals(deptId)).forEach(otm -> {
+            Integer number = recursiveDepartmentUserMap.get(otm.getId());
+            otm.setUserNumber(number == null ? 0 : number);
+        });
 
-        Map<Long, Organization> organizationMap = organizationList.stream().filter(m -> m.getDepth() == 1).
-                collect(Collectors.toMap(Organization::getSubId, treeModel -> treeModel));
-
-        User user = new User().setDepartmentId(userDeptId);
-        user.setDelFlag(0);
-        int count = userMapper.selectCount(user);
-
-        List<OrgModel> modelList = allDepartmentList.stream().map(dep -> {
-            OrgModel orgModel = new OrgModel();
-            Organization organization = organizationMap.get(dep.getId());
-            if (organization != null) {
-                orgModel.setParentId(organization.getSuperiorId());
-            }
-            orgModel.setOrgId(dep.getId());
-            orgModel.setOrgName(dep.getDepartmentName());
-            orgModel.setTenantId(dep.getTenantId());
-            orgModel.setUserNumber(count);
-            return orgModel;
-        }).collect(Collectors.toList());
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrder)).collect(Collectors.toList());
-        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertClosure(orgTreeModelList, Lists.newArrayList(rootIds));
+        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByDepth(orgTreeModelList, 0);
 
         return orgTree;
     }

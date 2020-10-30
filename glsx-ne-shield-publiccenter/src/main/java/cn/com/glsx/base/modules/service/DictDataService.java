@@ -4,11 +4,15 @@ import cn.com.glsx.base.modules.entity.SysDictData;
 import cn.com.glsx.base.modules.entity.SysDictType;
 import cn.com.glsx.base.modules.mapper.SysDictDataMapper;
 import cn.com.glsx.base.modules.mapper.SysDictTypeMapper;
-import cn.com.glsx.base.modules.model.*;
+import cn.com.glsx.base.modules.model.DictDataDTO;
+import cn.com.glsx.base.modules.model.DictDataSearch;
+import cn.com.glsx.base.modules.model.DictTypeDTO;
 import cn.com.glsx.base.modules.model.export.DictDataExport;
 import cn.com.glsx.base.modules.model.export.DictTypeExport;
 import cn.com.glsx.base.modules.utils.DictUtils;
 import com.github.pagehelper.PageInfo;
+import com.glsx.plat.exception.BusinessException;
+import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +80,7 @@ public class DictDataService implements InitializingBean {
         if (CollectionUtils.isNotEmpty(dictDatas)) {
             return dictDatas;
         }
-        dictDatas = this.getDictDataByType2(dictType);
+        dictDatas = dataMapper.selectByTypeWithDeleted(dictType);
         if (CollectionUtils.isNotEmpty(dictDatas)) {
             dictUtils.setDictCache(dictType, dictDatas);
             return dictDatas;
@@ -85,31 +89,67 @@ public class DictDataService implements InitializingBean {
     }
 
     public void addType(SysDictType type) {
-        // TODO: 2020/10/20 字典类型校验
+        checkAddType(type);
         typeMapper.insert(type);
     }
 
-    public void addData(SysDictData data) {
-        // TODO: 2020/10/20 字典数据校验
-        dataMapper.insert(data);
-    }
-
     public void editType(SysDictType type) {
-        // TODO: 2020/10/20 字典类型校验
+        checkEditType(type);
         typeMapper.updateByPrimaryKeySelective(type);
     }
 
+    public void addData(SysDictData data) {
+        checkAddData(data);
+        dataMapper.insert(data);
+    }
+
     public void editData(SysDictData data) {
-        // TODO: 2020/10/20 字典数据校验
+        checkEditData(data);
         dataMapper.updateByPrimaryKeySelective(data);
     }
 
+    private void checkAddType(SysDictType type) {
+        SysDictType dbType = typeMapper.selectByType(type.getDictType());
+        if (dbType != null) {
+            throw BusinessException.create("字典类型已存在");
+        }
+    }
+
+    private void checkEditType(SysDictType type) {
+        SysDictType dbType = typeMapper.selectByType(type.getDictType());
+        if (dbType != null && !dbType.getId().equals(type.getId())) {
+            throw BusinessException.create("字典类型已存在");
+        }
+    }
+
+    private void checkAddData(SysDictData data) {
+        SysDictData condition = new SysDictData()
+                .setDictType(data.getDictType())
+                .setDictLabel(data.getDictLabel())
+                .setDictValue(data.getDictValue());
+        SysDictData dbData = dataMapper.selectOne(condition);
+        if (dbData != null) {
+            throw BusinessException.create("字典数据已存在");
+        }
+    }
+
+    private void checkEditData(SysDictData data) {
+        SysDictData dbData = dataMapper.selectOne(new SysDictData()
+                .setDictType(data.getDictType())
+                .setDictLabel(data.getDictLabel())
+                .setDictValue(data.getDictValue())
+        );
+        if (dbData != null && !dbData.getId().equals(data.getId())) {
+            throw BusinessException.create("字典数据已存在");
+        }
+    }
+
     public SysDictType getDictTypeById(Long id) {
-        return typeMapper.selectByPrimaryKey(id);
+        return typeMapper.selectById(id);
     }
 
     public SysDictData getDictDataById(Long id) {
-        return dataMapper.selectByPrimaryKey(id);
+        return dataMapper.selectById(id);
     }
 
     public void logicDeleteTypeById(Long id) {
@@ -126,11 +166,11 @@ public class DictDataService implements InitializingBean {
     }
 
     public List<DictTypeExport> exportType(DictDataSearch search) {
-        return null;
+        return Lists.newArrayList();
     }
 
     public List<DictDataExport> exportData(DictDataSearch search) {
-        return null;
+        return Lists.newArrayList();
     }
 
 }

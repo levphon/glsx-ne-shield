@@ -2,8 +2,6 @@ package cn.com.glsx.neshield.modules.controller;
 
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.modules.BaseController;
-import cn.com.glsx.neshield.modules.converter.MenuConverter;
-import cn.com.glsx.neshield.modules.entity.Menu;
 import cn.com.glsx.neshield.modules.model.MenuModel;
 import cn.com.glsx.neshield.modules.model.export.MenuExport;
 import cn.com.glsx.neshield.modules.model.param.MenuBO;
@@ -25,9 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * @author: taoyr
@@ -97,7 +93,12 @@ public class MenuController extends BaseController {
     @GetMapping("/checkedtree")
     public R getMenuFullTree(@RequestParam(value = "roleId", required = false) Long roleId) {
         List<MenuModel> menuTree = menuService.getMenuFullTreeWithChecked(ShieldContextHolder.getRoleIds(), roleId);
-        return R.ok().data(menuTree);
+        List<Long> checkedIds = menuService.getMenuCheckedIds(roleId);
+
+        Map<String, Object> rtnMap = new HashMap<>();
+        rtnMap.put("menuTree", menuTree);
+        rtnMap.put("checkedIds", checkedIds);
+        return R.ok().data(rtnMap);
     }
 
     @SysLog(module = MODULE, action = OperateType.ADD)
@@ -117,11 +118,11 @@ public class MenuController extends BaseController {
 
     @GetMapping("/info")
     public R info(@RequestParam("menuId") Long id) {
-        Menu menu = menuService.getMenuById(id);
-        MenuDTO menuDTO = MenuConverter.INSTANCE.do2dto(menu);
+        MenuDTO menuDTO = menuService.getMenuById(id);
         return R.ok().data(menuDTO);
     }
 
+    //    @RequireFunctionPermissions(permissionType = FunctionPermissionType.MENU_DELETE)
     @SysLog(module = MODULE, action = OperateType.DELETE)
     @GetMapping("/delete")
     public R delete(@RequestParam("menuId") Long id) {

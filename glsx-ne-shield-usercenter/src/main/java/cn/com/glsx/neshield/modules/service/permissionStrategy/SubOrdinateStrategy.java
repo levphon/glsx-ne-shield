@@ -3,13 +3,13 @@ package cn.com.glsx.neshield.modules.service.permissionStrategy;
 import cn.com.glsx.admin.common.constant.UserConstants;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.common.exception.UserCenterException;
-import cn.com.glsx.neshield.modules.entity.User;
-import cn.com.glsx.neshield.modules.mapper.UserMapper;
-import cn.com.glsx.neshield.modules.mapper.UserPathMapper;
 import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Organization;
+import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
+import cn.com.glsx.neshield.modules.mapper.UserMapper;
+import cn.com.glsx.neshield.modules.mapper.UserPathMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
@@ -22,6 +22,7 @@ import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -36,7 +37,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-public class SubOrdinateStrategy implements PermissionStrategy {
+public class SubOrdinateStrategy extends PermissionStrategy {
 
     @Resource
     private OrganizationMapper organizationMapper;
@@ -61,6 +62,7 @@ public class SubOrdinateStrategy implements PermissionStrategy {
     @Override
     public List<User> permissionUsers() {
         Long departmentId = ShieldContextHolder.getDepartmentId();
+        Long userId = ShieldContextHolder.getUserId();
 
         //获取下属部门
         List<OrgModel> modelList = organizationMapper.selectOrgList(new OrgTreeSearch().setTenantId(ShieldContextHolder.getTenantId()));
@@ -70,8 +72,12 @@ public class SubOrdinateStrategy implements PermissionStrategy {
         TreeModelUtil.findChildrenIds(departmentId, orgTreeModelList, subOrgIdList);
         subOrgIdList.add(departmentId);
 
-        List<User> list = userMapper.selectDepartmentsSubordinate(new UserSearch().setDepartmentIdList(subOrgIdList));
-        log.info("用户{} {}用户数为{}", ShieldContextHolder.getUsername(), UserConstants.RolePermitCastType.subDepartment.getValue(), list.size());
+        List<User> list = userMapper.selectDepartmentsSubordinate(new UserSearch().setUserId(userId).setDepartmentIdList(subOrgIdList));
+
+        //本人
+        User user = userMapper.selectById(userId);
+        list.add(user);
+        log.info("用户{} {}用户数为{}", ShieldContextHolder.getUsername(), UserConstants.RolePermitCastType.subordinate.getValue(), list.size());
         return list;
     }
 
@@ -89,93 +95,80 @@ public class SubOrdinateStrategy implements PermissionStrategy {
      * @return
      */
     @Override
-    public List<DepartmentDTO> organizationSimpleList(Long rootId) {
+    public List<DepartmentDTO> orgSimpleList(Long rootId) {
 
-        List<DepartmentDTO> departmentDTOList;
-
-        Long userDeptId = ShieldContextHolder.getDepartment().getDeptId();
         Long userId = ShieldContextHolder.getUserId();
 
-        //alist
-        List<Long> rawSubIdList = Lists.newArrayList();
+        Long userDeptId = ShieldContextHolder.getDepartmentId();
+
+        List<Department> departmentParamList = Lists.newArrayList();
 
         if (rootId == null) {
-            //     * 4.1 root找自己根部门
-            Organization organization = organizationMapper.selectRootPath(userDeptId);
+            Department department = departmentMapper.selectById(userDeptId);
 
-            Department department = departmentMapper.selectByPrimaryKey(organization.getSuperiorId());
-
-            rawSubIdList.add(department.getId());
+            departmentParamList.add(department);
         } else {
-            //     * 4.2 非root
-            //     * 找到rootId的下级部门alist
-            List<Organization> rawSubOrganizationList = organizationMapper.selectSubList(Lists.newArrayList(rootId), 1);
+            //所有下级
+            List<Organization> childrenOrgList = organizationMapper.selectList(new OrganizationBO()
+                    .setSuperiorIdList(Lists.newArrayList(userDeptId))
+                    .setBiggerDepth(1));
+            List<Long> subIdList = childrenOrgList.stream().map(Organization::getSubId).collect(Collectors.toList());
 
-            rawSubIdList = rawSubOrganizationList.stream().map(Organization::getSubId).collect(Collectors.toList());
-        }
+            subIdList.add(userDeptId);
 
-        //     * 连表查出所有下级用户（及本人）所在所有部门blist
-        List<DepartmentUserCount> subordinateDepartmentUserCountList = userPathMapper.selectSubordinateDepartmentList(userId);
+            if (subIdList.contains(rootId)) {
+                List<Organization> subOrganizationList = organizationMapper.selectSubList(Lists.newArrayList(rootId), 1);
 
-        Map<Long, Integer> subordinateDepartmentUserCountMap = subordinateDepartmentUserCountList.stream().collect(Collectors.toMap(DepartmentUserCount::getDepartmentId, DepartmentUserCount::getUserNumber));
+                List<Long> departmentIdList = subOrganizationList.stream().map(Organization::getSubId).collect(Collectors.toList());
 
-        List<Long> subordinateDepartmentIdList = subordinateDepartmentUserCountList.stream().map(DepartmentUserCount::getDepartmentId).collect(Collectors.toList());
+                List<Department> departmentList = departmentMapper.selectByIds(departmentIdList);
 
-        OrganizationBO organizationBO = new OrganizationBO().setSubIdList(subordinateDepartmentIdList).setSuperiorIdList(rawSubIdList);
-
-        //     * t_organization查询blist是当前alist下级的，存在关系，则为最终部门列表clist
-        List<Organization> finalOrganizationList = organizationMapper.selectList(organizationBO);
-
-        Map<Long, List<Organization>> superSubOrganizationMap = finalOrganizationList.stream().collect(Collectors.groupingBy(Organization::getSuperiorId));
-
-        List<Long> finalSubIdList = Lists.newArrayList(finalOrganizationList.stream().map(Organization::getSubId).collect(Collectors.toSet()));
-
-        List<Department> finalDepartmentList = departmentMapper.selectByIds(finalSubIdList);
-
-        departmentDTOList = departmentService.getDepartmentAssembled(finalDepartmentList, false, false);
-
-        //     * -设置hasChild clist有depth>=1且在blist集合中的下级部门，则为true
-        List<Organization> hasChildOrganizationList = organizationMapper.selectList(new OrganizationBO()
-                .setSuperiorIdList(finalSubIdList)
-                .setSubIdList(subordinateDepartmentIdList)
-                .setBiggerDepth(1));
-
-        List<Long> superiorIdList = hasChildOrganizationList.stream().map(Organization::getSuperiorId).collect(Collectors.toList());
-
-        for (DepartmentDTO departmentDTO : departmentDTOList) {
-            Long id = departmentDTO.getId();
-
-            List<Organization> subOrganizationList = superSubOrganizationMap.get(id);
-
-            //     * -设置userNum 据前面查出的map
-            Integer userNumber = 0;
-            for (Organization organization : subOrganizationList) {
-                Integer userCount = subordinateDepartmentUserCountMap.get(organization.getSubId());
-
-                userNumber += userCount;
+                departmentParamList.addAll(departmentList);
             }
-
-            departmentDTO.setUserNumber(userNumber);
-            departmentDTO.setHasChildren(superiorIdList.contains(id));
         }
 
+        //存在用户的下级部门
+        List<DepartmentUserCount> departmentUserCountList = userPathMapper.selectSubordinateDepartmentList(userId);
+        List<Long> hasUserDeptIdList = departmentUserCountList.stream()
+                .filter(duc -> duc.getDepartmentId() != null)
+                .map(DepartmentUserCount::getDepartmentId)
+                .collect(Collectors.toList());
+
+        List<DepartmentDTO> departmentDTOList = departmentService.getDepartmentAssembled(departmentParamList, false, false);
+        for (DepartmentDTO departmentDTO : departmentDTOList) {
+            if (rootId == null) {
+                departmentDTO.setHasChildren(CollectionUtils.isNotEmpty(hasUserDeptIdList));
+            } else {
+                departmentDTO.setHasChildren(hasUserDeptIdList.contains(departmentDTO.getId()));
+            }
+        }
         return departmentDTOList;
     }
 
     @Override
-    public List<? extends TreeModel> orgTree(String departmentName) {
+    public List<? extends TreeModel> orgTree(OrgTreeSearch search) {
+
+        Long tenantId = ShieldContextHolder.getTenantId();
 
         Long userId = ShieldContextHolder.getUserId();
 
         List<DepartmentUserCount> departmentUserCountList = userPathMapper.selectSubordinateDepartmentList(userId);
 
-        List<Long> subDepartmentIdList = departmentUserCountList.stream().map(DepartmentUserCount::getDepartmentId).collect(Collectors.toList());
+        //下级部门id
+        List<Long> subDepartmentIdList = departmentUserCountList.stream()
+                .filter(duc -> duc.getDepartmentId() != null)
+                .map(DepartmentUserCount::getDepartmentId)
+                .collect(Collectors.toList());
 
-        List<Department> namedDepartmentList = departmentMapper.selectDepartmentList(new Department().setDepartmentName(departmentName));
+        //模糊搜索得到的部门
+        List<Department> namedDepartmentList = departmentMapper.selectDepartmentList(new Department()
+                .setTenantId(tenantId)
+                .setDepartmentName(search.getOrgName()));
 
+        //提取符合搜索条件的部门
         List<Department> finalNamedDepartmentList = Lists.newArrayList();
         for (Department department : namedDepartmentList) {
-            if (subDepartmentIdList.contains(department.getId())){
+            if (subDepartmentIdList.contains(department.getId())) {
                 finalNamedDepartmentList.add(department);
             }
         }
@@ -187,34 +180,38 @@ public class SubOrdinateStrategy implements PermissionStrategy {
         //所有部门id
         List<Long> allDepartmentIdList = superiorOrgList.stream().map(Organization::getSuperiorId).collect(Collectors.toList());
 
+        allDepartmentIdList.addAll(nameDepartmentIdList);
+
         List<Department> allDepartmentList = departmentMapper.selectByIds(allDepartmentIdList);
         //所有组织链
         List<Organization> organizationList = organizationMapper.selectList(new OrganizationBO().setSubIdList(allDepartmentIdList).setSuperiorIdList(allDepartmentIdList));
-
         //根节点
         List<Organization> rootList = organizationMapper.selectRootIdList(nameDepartmentIdList);
+
         Set<Long> rootIds = rootList.stream().map(Organization::getSuperiorId).collect(Collectors.toSet());
 
-        Map<Long, Organization> organizationMap = organizationList.stream().filter(m -> m.getDepth() == 1).
+        Map<Long, Organization> organizationMap = organizationList.stream().filter(m -> m.getDepth() == 0 || m.getDepth() == 1).
                 collect(Collectors.toMap(Organization::getSubId, treeModel -> treeModel));
 
-        List<DepartmentUserCount> subordinateDepartmentUserCountList = userPathMapper.selectSubordinateDepartmentList(userId);
-        Map<Long, Integer> subordinateDepartmentUserCountMap = subordinateDepartmentUserCountList.stream().collect(Collectors.toMap(DepartmentUserCount::getDepartmentId, DepartmentUserCount::getUserNumber));
+        Map<Long, Integer> subordinateDepartmentUserCountMap = departmentUserCountList.stream().collect(Collectors.toMap(DepartmentUserCount::getDepartmentId, DepartmentUserCount::getUserNumber));
 
         List<OrgModel> modelList = allDepartmentList.stream().map(dep -> {
             OrgModel orgModel = new OrgModel();
-            Organization organization = organizationMap.get(dep.getId());
-            if (organization != null) {
-                orgModel.setParentId(organization.getSuperiorId());
+            Organization org = organizationMap.get(dep.getId());
+            if (org != null) {
+                orgModel.setParentId(org.getSuperiorId());
             }
             orgModel.setOrgId(dep.getId());
             orgModel.setOrgName(dep.getDepartmentName());
             orgModel.setTenantId(dep.getTenantId());
             Integer userNumber = subordinateDepartmentUserCountMap.get(dep.getId());
             orgModel.setUserNumber(userNumber);
+            orgModel.setOrderNum(dep.getOrderNum());
             return orgModel;
         }).collect(Collectors.toList());
+
         List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrder)).collect(Collectors.toList());
+
         List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertClosure(orgTreeModelList, Lists.newArrayList(rootIds));
 
         return orgTree;

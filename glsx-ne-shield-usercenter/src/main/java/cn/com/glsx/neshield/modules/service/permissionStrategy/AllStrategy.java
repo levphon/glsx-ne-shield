@@ -3,24 +3,24 @@ package cn.com.glsx.neshield.modules.service.permissionStrategy;
 import cn.com.glsx.admin.common.constant.Constants;
 import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.entity.Department;
-import cn.com.glsx.neshield.modules.entity.Organization;
 import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
+import cn.com.glsx.neshield.modules.mapper.UserMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
+import cn.com.glsx.neshield.modules.model.OrgSuperiorModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
-import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
+import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.service.DepartmentService;
 import com.glsx.plat.common.model.TreeModel;
+import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.common.utils.TreeModelUtil;
-import com.google.common.collect.Lists;
-import org.apache.commons.collections4.CollectionUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,11 +29,15 @@ import java.util.stream.Collectors;
 /**
  * @author taoyr
  */
+@Slf4j
 @Component
-public class AllStrategy implements PermissionStrategy {
+public class AllStrategy extends PermissionStrategy {
 
     @Resource
     private OrganizationMapper organizationMapper;
+
+    @Resource
+    private UserMapper userMapper;
 
     @Resource
     private DepartmentMapper departmentMapper;
@@ -61,19 +65,14 @@ public class AllStrategy implements PermissionStrategy {
      * @return
      */
     @Override
-    public List<DepartmentDTO> organizationSimpleList(Long rootId) {
-
+    public List<DepartmentDTO> orgSimpleList(Long rootId) {
         List<Department> departmentParamList;
-
         if (rootId == null) {
             departmentParamList = departmentMapper.selectDepartmentList(new Department().setIsRoot(Constants.IS_ROOT_DEPARTMENT));
         } else {
             departmentParamList = organizationMapper.selectChildrenList(new OrganizationSearch().setRootId(rootId));
         }
-
-        List<DepartmentDTO> departmentDTOList = departmentService.getDepartmentAssembled(departmentParamList, true, true);
-
-        return departmentDTOList;
+        return departmentService.getDepartmentAssembled(departmentParamList, true, true);
     }
 
     /**
@@ -83,61 +82,33 @@ public class AllStrategy implements PermissionStrategy {
      * 4.找出根节点rootList
      * 5.封装-调用TreeModelUtil组装树
      *
-     * @param departmentName
+     * @param search
      * @return
      */
     @Override
-    public List<? extends TreeModel> orgTree(String departmentName) {
+    public List<? extends TreeModel> orgTree(OrgTreeSearch search) {
+        if (StringUtils.isNotEmpty(search.getOrgName())) {
+            List<OrgSuperiorModel> superiorModelList = organizationMapper.selectSuperiorIdsByOrg(search);
+            Set<Long> ids = getSuperiorIds(superiorModelList);
+            search.setOrgIds(ids);
+        }
 
-        List<Department> nameDepartmentList = departmentMapper.selectDepartmentList(new Department().setDepartmentName(departmentName));
-        //符合条件的部门idlist
-        List<Long> nameDepartmentIdList = nameDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
+        List<OrgModel> modelList = organizationMapper.selectOrgList(search);
 
-        List<Organization> superiorOrgList = organizationMapper.selectList(new OrganizationBO().setSubIdList(nameDepartmentIdList));
-        //上级部门id
-        List<Long> allDepartmentIdList = superiorOrgList.stream().map(Organization::getSuperiorId).collect(Collectors.toList());
-
-        CollectionUtils.addAll(allDepartmentIdList, nameDepartmentIdList);
-
-        List<Department> allDepartmentList = departmentMapper.selectByIds(allDepartmentIdList);
-        //所有组织链
-        List<Organization> organizationList = organizationMapper.selectList(new OrganizationBO().setSubIdList(allDepartmentIdList).setSuperiorIdList(allDepartmentIdList));
-        //根节点
-        List<Organization> rootList = organizationMapper.selectRootIdList(nameDepartmentIdList);
-
-        Set<Long> rootIds = rootList.stream().map(Organization::getSuperiorId).collect(Collectors.toSet());
-
-        Map<Long, Organization> organizationMap = organizationList.stream()
-                .filter(m -> m.getDepth() == 0 || m.getDepth() == 1)
-                .collect(Collectors.toMap(Organization::getSubId, treeModel -> treeModel));
-
-        List<Long> departmentIdList = allDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
-
+        List<Long> departmentIdList = modelList.stream().map(OrgModel::getOrgId).collect(Collectors.toList());
+        //计算用户数
         Map<Long, Integer> recursiveDepartmentUserMap = departmentService.countRecursiveDepartmentUser(departmentIdList);
 
-        List<OrgModel> modelList = allDepartmentList.stream().map(dep -> {
-            OrgModel orgModel = new OrgModel();
-            Organization org = organizationMap.get(dep.getId());
-            if (org != null) {
-                if (org.getSuperiorId().equals(org.getSubId())) {
-                    orgModel.setParentId(0L);
-                } else {
-                    orgModel.setParentId(org.getSuperiorId());
-                }
-            }
-            orgModel.setOrderNum(dep.getOrderNum());
-            orgModel.setOrgId(dep.getId());
-            orgModel.setOrgName(dep.getDepartmentName());
-            orgModel.setTenantId(dep.getTenantId());
-            Integer userNumber = recursiveDepartmentUserMap.get(dep.getId());
-            orgModel.setUserNumber(userNumber);
-            return orgModel;
-        }).collect(Collectors.toList());
+        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).collect(Collectors.toList());
 
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).sorted(Comparator.comparing(OrgTreeModel::getOrder)).collect(Collectors.toList());
+        orgTreeModelList.forEach(otm -> {
+            Integer number = recursiveDepartmentUserMap.get(otm.getId());
+            otm.setUserNumber(number == null ? 0 : number);
+        });
 
-        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertClosure(orgTreeModelList, Lists.newArrayList(rootIds));
+        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByDepth(orgTreeModelList, 0);
 
         return orgTree;
     }
+
 }

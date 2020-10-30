@@ -1,6 +1,7 @@
 package cn.com.glsx.neshield.modules.controller;
 
-import cn.com.glsx.neshield.modules.model.OrgModel;
+import cn.com.glsx.auth.model.FunctionPermissionType;
+import cn.com.glsx.auth.model.RequireFunctionPermissions;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
@@ -77,11 +78,12 @@ public class OrganizationController {
     @SysLog(module = MODULE, action = OperateType.EDIT)
     @PostMapping("/edit")
     public R editOrganization(@RequestBody @Valid OrganizationBO orgBO) {
-        AssertUtils.isNull(orgBO.getOrganizationId(), "参数有误");
+        AssertUtils.isNull(orgBO.getId(), "参数有误");
         organizationService.editOrganization(orgBO);
         return R.ok();
     }
 
+    @RequireFunctionPermissions(permissionType = FunctionPermissionType.ORG_DELETE)
     @SysLog(module = MODULE, action = OperateType.DELETE)
     @GetMapping("/delete")
     public R deleteOrganization(@RequestParam("id") Long organizationId) {
@@ -91,14 +93,14 @@ public class OrganizationController {
 
     @GetMapping("/info")
     public R organizationInfo(@RequestParam("id") Long organizationId) {
-        OrgModel orgModel = organizationService.organizationInfo(organizationId);
-        return R.ok().data(orgModel);
+        DepartmentDTO departmentDTO = organizationService.organizationInfo(organizationId);
+        return R.ok().data(departmentDTO);
     }
 
     @GetMapping("/strategy")
-    public R rolePermission(@RequestParam("type") Integer rolePermissionType) {
-        organizationService.permissionStrategy(rolePermissionType);
-        return R.ok();
+    public R rolePermission(OrgTreeSearch search) {
+        List<DepartmentDTO> dtoList = organizationService.permissionStrategy(search);
+        return R.ok().data(dtoList);
     }
 
 }

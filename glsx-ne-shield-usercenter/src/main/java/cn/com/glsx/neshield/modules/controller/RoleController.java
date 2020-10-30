@@ -58,7 +58,7 @@ public class RoleController {
     public R edit(@RequestBody @Valid RoleBO roleBO) {
         AssertUtils.isNull(roleBO.getRoleId(), "ID不能为空");
         if (roleBO.getRoleId().equals(adminRoleId)) {
-            throw UserCenterException.of(SystemMessage.NOT_SUPPORT_OPERATOR);
+            throw UserCenterException.of(SystemMessage.OPERATE_PERMISSION_DENIED);
         }
         roleService.editRole(roleBO);
         return R.ok();
@@ -72,11 +72,12 @@ public class RoleController {
         return R.ok().data(roleDTO);
     }
 
+    //    @RequireFunctionPermissions(permissionType = FunctionPermissionType.ROLE_DELETE)
     @SysLog(module = MODULE, action = OperateType.DELETE)
     @GetMapping("/delete")
     public R delete(@RequestParam("id") Long id) {
         if (id.equals(adminRoleId)) {
-            throw UserCenterException.of(SystemMessage.NOT_SUPPORT_OPERATOR);
+            throw UserCenterException.of(SystemMessage.OPERATE_PERMISSION_DENIED);
         }
         roleService.deleteRole(id);
         return R.ok();

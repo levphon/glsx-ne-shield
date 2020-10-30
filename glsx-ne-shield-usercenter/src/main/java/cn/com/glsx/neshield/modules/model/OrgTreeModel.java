@@ -1,5 +1,6 @@
 package cn.com.glsx.neshield.modules.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.glsx.plat.common.model.TreeModel;
 
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class OrgTreeModel implements TreeModel<OrgModel> {
         return org.getDepth();
     }
 
+    @JsonIgnore
     @Override
     public Integer getOrder() {
         return org.getOrderNum();

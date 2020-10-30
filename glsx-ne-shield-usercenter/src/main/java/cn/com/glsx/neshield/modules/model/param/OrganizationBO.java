@@ -12,11 +12,11 @@ import java.util.List;
 @Accessors(chain = true)
 public class OrganizationBO {
 
+    private Long id;
+
+    private String departmentName;
+
     private Long superiorId;
-
-    private Long organizationId;
-
-    private String name;
 
     private Integer orderNum;
 

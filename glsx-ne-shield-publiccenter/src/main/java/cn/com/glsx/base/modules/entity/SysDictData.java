@@ -2,19 +2,21 @@ package cn.com.glsx.base.modules.entity;
 
 import com.glsx.plat.mybatis.base.BaseEntity;
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 import javax.persistence.Column;
 import javax.persistence.Table;
 
 @Data
+@Accessors(chain = true)
 @Table(name = "t_dict_data")
 public class SysDictData extends BaseEntity {
 
     /**
-     * 字典排序
+     * 字典类型
      */
-    @Column(name = "dict_sort")
-    private Integer dictSort;
+    @Column(name = "dict_type")
+    private String dictType;
 
     /**
      * 字典标签
@@ -29,10 +31,10 @@ public class SysDictData extends BaseEntity {
     private String dictValue;
 
     /**
-     * 字典类型
+     * 字典排序
      */
-    @Column(name = "dict_type")
-    private String dictType;
+    @Column(name = "dict_sort")
+    private Integer dictSort;
 
     /**
      * 是否默认（Y是 N否）

@@ -48,9 +48,18 @@
         <include refid="Base_Column_List"/>
         from t_dict_data
         where dict_type = #{type}
+        and del_flag = 0
     </select>
 
     <select id="selectByType2" resultMap="DTOResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_dict_data
+        where dict_type = #{type}
+        and del_flag = 0
+    </select>
+
+    <select id="selectByTypeWithDeleted" resultMap="DTOResultMap">
         select
         <include refid="Base_Column_List"/>
         from t_dict_data
@@ -61,10 +70,8 @@
         select
         <include refid="Base_Column_List"/>
         from t_dict_data
-        where dict_type = #{type}
-        <if test="name != null and name != ''">
-            and name LIKE CONCAT('%',#{name},'%')
-        </if>
+        where del_flag = 0
+        and dict_type = #{type}
         <if test="tag != null and tag != ''">
             and dict_label LIKE CONCAT('%',#{tag},'%')
         </if>
@@ -76,6 +83,14 @@
             and DATE_FORMAT(created_date, '%Y-%m-%d') &lt;= #{eDate}
         </if>
         order by id desc
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_dict_data
+        where id = #{id}
+        and del_flag = 0
     </select>
 
     <update id="logicDeleteById">

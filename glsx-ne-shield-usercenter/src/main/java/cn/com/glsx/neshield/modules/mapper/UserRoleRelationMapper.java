@@ -12,8 +12,9 @@ public interface UserRoleRelationMapper extends CommonBaseMapper<UserRoleRelatio
     /**
      * 获取用户角色列表
      *
-     * @param userRoleRelation
+     * @param relation
      * @return
      */
-    List<UserRoleRelation> selectUserRoleRelationList(UserRoleRelation userRoleRelation);
+    List<UserRoleRelation> selectUserRoleRelationList(UserRoleRelation relation);
+
 }

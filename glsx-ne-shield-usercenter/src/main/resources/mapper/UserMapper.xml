@@ -10,7 +10,7 @@
         <result column="portrait" jdbcType="VARCHAR" property="portrait"/>
         <result column="email" jdbcType="VARCHAR" property="email"/>
         <result column="gender" jdbcType="INTEGER" property="gender"/>
-        <result column="position_" jdbcType="INTEGER" property="position"/>
+        <result column="position_" jdbcType="VARCHAR" property="position"/>
         <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
         <result column="department_id" jdbcType="INTEGER" property="departmentId"/>
         <result column="superior_id" jdbcType="INTEGER" property="superiorId"/>
@@ -56,7 +56,8 @@
         limit 1
     </select>
 
-    <select id="selectList" resultMap="BaseResultMap" parameterType="cn.com.glsx.neshield.modules.model.param.UserSearch">
+    <select id="selectList" resultMap="BaseResultMap"
+            parameterType="cn.com.glsx.neshield.modules.model.param.UserSearch">
         select
         <include refid="Base_Column_List"/>
         from t_user where del_flag = 0
@@ -67,8 +68,6 @@
             phone_number like CONCAT('%',#{searchField},'%')
             or
             username like CONCAT('%',#{searchField},'%')
-            or
-            id = #{searchField}
             )
         </if>
         <if test="userStatus != null">
@@ -80,7 +79,6 @@
         <if test="userId != null">
             and user_id = #{userId}
         </if>
-
         <if test="departmentIdList != null and departmentIdList.size() > 0">
             and department_id in
             <foreach collection="departmentIdList" item="departmentId" open="(" close=")" separator=",">
@@ -93,7 +91,8 @@
     update t_user set del_flag = -1 where id = #{id}
   </update>
 
-    <select id="countByCriterial" parameterType="cn.com.glsx.neshield.modules.model.param.UserBO" resultMap="BaseResultMap">
+    <select id="countByCriterial" parameterType="cn.com.glsx.neshield.modules.model.param.UserBO"
+            resultMap="BaseResultMap">
         select count(*) from t_user
         where del_flag = 0
         <if test="departmentId != null">
@@ -123,25 +122,24 @@
         select tu.id id, tu.account account, tu.username username, tu.department_id departmentId,
         tu.phone_number phoneNumber, tu.enable_status enableStatus, tu.created_date createdDate
         from t_user tu, t_user_path tup
-        where tu.del_flag = 0 and tup.del_flag = 0 and tu.user_id = tup.sub_id
-        <if test="userId != null">
-            and tup.superior_id = #{userId}
-        </if>
+        where tu.del_flag = 0 and tup.del_flag = 0
+        and tu.id = tup.sub_id
+        and tup.superior_id = #{userId}
         <if test="userStatus != null">
             and tu.enable_status = #{userStatus}
         </if>
         <if test="searchField != null">
             and (
-                tu.account like CONCAT('%',#{searchField},'%')
-                or
-                tu.phone_number like CONCAT('%',#{searchField},'%')
-                or
-                tu.username like CONCAT('%',#{searchField},'%')
+            tu.account like CONCAT('%',#{searchField},'%')
+            or
+            tu.phone_number like CONCAT('%',#{searchField},'%')
+            or
+            tu.username like CONCAT('%',#{searchField},'%')
             )
         </if>
         <if test="departmentIdList != null and departmentIdList.size() > 0">
             and tu.department_id in
-            <foreach collection="departmentList" separator="," close=")" open="(" item="departmentId">
+            <foreach collection="departmentIdList" separator="," close=")" open="(" item="departmentId">
                 #{departmentId}
             </foreach>
         </if>

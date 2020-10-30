@@ -1,6 +1,5 @@
 package cn.com.glsx.neshield.modules.converter;
 
-import cn.com.glsx.neshield.modules.model.view.RoleDTO;
 import cn.com.glsx.neshield.modules.entity.Role;
 import cn.com.glsx.neshield.modules.model.param.RoleBO;
 import org.mapstruct.Mapper;
@@ -19,11 +18,11 @@ public interface RoleConverter {
             @Mapping(source = "roleId", target = "id"),
             @Mapping(source = "roleName", target = "roleName"),
             @Mapping(source = "remark", target = "remark"),
-            @Mapping(source = "permissionType", target = "rolePermissionType"),
-            @Mapping(source = "visibleType", target = "roleVisibility"),
-//            @Mapping(source = "visibleTenant", target = "roleTenants"),
+            @Mapping(source = "rolePermissionType", target = "rolePermissionType"),
+            @Mapping(source = "roleVisibility", target = "roleVisibility"),
+            @Mapping(source = "roleTenants", target = "roleTenants"),
             @Mapping(source = "enableStatus", target = "enableStatus"),
     })
-    Role boToDo(RoleBO roleBO);
+    Role bo2do(RoleBO roleBO);
 
 }

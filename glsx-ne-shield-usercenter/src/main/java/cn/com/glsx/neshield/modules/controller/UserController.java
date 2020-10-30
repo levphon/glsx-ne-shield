@@ -14,8 +14,8 @@ import com.glsx.plat.common.enums.OperateType;
 import com.glsx.plat.common.utils.DateUtils;
 import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.context.utils.validator.AssertUtils;
-import com.glsx.plat.core.constant.ResultConstants;
 import com.glsx.plat.core.web.R;
+import com.glsx.plat.exception.SystemMessage;
 import com.glsx.plat.office.excel.EasyExcelUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
@@ -59,7 +59,7 @@ public class UserController extends BaseController {
 //        User user = UserConverter.INSTANCE.bo2do(userBO);
         String password = userBO.getPassword();
         if (StringUtils.isBlank(password) || !RegexUtil.regexPwd(password)) {
-            return R.error(ResultConstants.ARGS_ERROR.getCode(), "密码格式错误");
+            return R.error(SystemMessage.ARGS_ERROR.getCode(), "密码格式错误");
         }
         userService.addUser(userBO);
         return R.ok();
@@ -80,6 +80,7 @@ public class UserController extends BaseController {
         return R.ok().data(user);
     }
 
+//    @RequireFunctionPermissions(permissionType = FunctionPermissionType.USER_DELETE)
     @SysLog(module = MODULE, action = OperateType.DELETE)
     @GetMapping(value = "/delete")
     public R delete(@RequestParam("id") Long id) {
@@ -89,8 +90,8 @@ public class UserController extends BaseController {
 
     @GetMapping("/suitableSuperUsers")
     public R suitableSuperUsers(@RequestParam("departmentId") Long departmentId) {
-        SuperTreeModel superTreeModel = userService.suitableSuperUsers(departmentId);
-        return R.ok().data(superTreeModel);
+        List<SuperTreeModel> superTreeModels = userService.suitableSuperUsers(departmentId);
+        return R.ok().data(superTreeModels);
     }
 
 }

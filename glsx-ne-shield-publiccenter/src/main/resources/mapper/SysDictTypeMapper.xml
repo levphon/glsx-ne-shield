@@ -43,7 +43,7 @@
         from t_dict_type
         where del_flag = 0
         <if test="name != null and name != ''">
-            and name LIKE CONCAT('%',#{name},'%')
+            and dict_name LIKE CONCAT('%',#{name},'%')
         </if>
         <if test="type != null and type != ''">
             and dict_type LIKE CONCAT('%',#{type},'%')
@@ -70,6 +70,23 @@
         <include refid="Base_Column_List"/>
         from t_dict_type
         where del_flag = 0
+    </select>
+
+
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_dict_type
+        where del_flag = 0
+        and id = #{id}
+    </select>
+
+    <select id="selectByType" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_dict_type
+        where del_flag = 0
+        and dict_type = #{type}
     </select>
 
     <update id="logicDeleteById">

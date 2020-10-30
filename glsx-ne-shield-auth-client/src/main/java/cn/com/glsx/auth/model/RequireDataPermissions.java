@@ -13,6 +13,11 @@ import java.lang.annotation.*;
 public @interface RequireDataPermissions {
 
     /**
+     * @return
+     */
+    String linkTable() default "";
+
+    /**
      * 需要进行过滤的连表id(增删改操作不需要)
      *
      * @return

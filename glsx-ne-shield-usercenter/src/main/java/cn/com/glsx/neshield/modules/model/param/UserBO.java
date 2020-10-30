@@ -54,7 +54,7 @@ public class UserBO {
     /**
      * 岗位
      */
-    private Long position;
+    private String position;
 
     @NotNull
     private Integer enableStatus;

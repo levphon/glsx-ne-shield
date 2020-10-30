@@ -20,6 +20,12 @@ public class DepartmentDTO {
     private Long tenantId;
 
     /**
+     * 上级id
+     */
+    private Long superiorId;
+    private String superiorName;
+
+    /**
      * 排序值
      */
     private Integer orderNum;

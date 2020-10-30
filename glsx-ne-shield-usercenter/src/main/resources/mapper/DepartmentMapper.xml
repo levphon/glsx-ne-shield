@@ -38,7 +38,11 @@
     <select id="selectDepartmentList" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
-        from t_department where del_flag = 0
+        from t_department
+        where del_flag = 0
+        <if test="tenantId != null">
+            and tenant_id = #{tenantId}
+        </if>
         <if test="departmentName != null">
             and department_name like CONCAT('%',#{departmentName},'%')
         </if>

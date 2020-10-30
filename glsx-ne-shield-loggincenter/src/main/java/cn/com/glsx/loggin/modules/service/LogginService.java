@@ -5,7 +5,6 @@ import cn.com.glsx.auth.api.AuthFeignClient;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.loggin.modules.model.SysLogSearch;
 import com.alibaba.fastjson.JSONArray;
-import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.core.web.R;
 import com.glsx.plat.loggin.LogginStrategyFactory;
 import com.glsx.plat.loggin.entity.SysLogEntity;
@@ -17,7 +16,9 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @Service
 public class LogginService {
@@ -40,12 +41,13 @@ public class LogginService {
         query.addCriteria(criteria);
 
         Sort sort = Sort.by(Sort.Direction.DESC, "createdDate");
+
+        long total = mongoTemplate.count(query, SysLogEntity.class);
+
         //注意：分页索引从0开始
         Pageable pageable = PageRequest.of(search.getPageNumber() - 1, search.getPageSize(), sort);
 
         List<SysLogEntity> list = mongoTemplate.find(query.with(pageable), SysLogEntity.class);
-
-        long total = mongoTemplate.count(query, SysLogEntity.class);
 
         return new PageImpl(list, pageable, total);
     }
@@ -89,13 +91,34 @@ public class LogginService {
             }
         }
 
-        if (StringUtils.isNotEmpty(search.getSDate()) && StringUtils.isNotEmpty(search.getEDate())) {
+        Date sDate = search.getStartDate();
+        Date eDate = search.getEndDate(true);
+        if (sDate != null && eDate != null) {
             criteria.andOperator(
-                    Criteria.where("createdDate").gte(search.getSDate()),
-                    Criteria.where("createdDate").lt(search.getEDate())
+                    Criteria.where("createdDate").gte(Objects.requireNonNull(dateToISODate(sDate))),
+                    Criteria.where("createdDate").lt(Objects.requireNonNull(dateToISODate(eDate)))
             );
         }
         return criteria;
+    }
+
+    /**
+     * mongo 日期查询isodate
+     *
+     * @param originDate
+     * @return
+     */
+    public static Date dateToISODate(Date originDate) {
+        //T代表后面跟着时间，Z代表UTC统一时间
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        format.setCalendar(new GregorianCalendar(new SimpleTimeZone(0, "GMT")));
+        try {
+            String isoDate = format.format(originDate);
+            return format.parse(isoDate);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }

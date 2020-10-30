@@ -21,7 +21,6 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.core.constant.BasicConstants;
-import com.glsx.plat.core.enums.SysConstants;
 import com.glsx.plat.exception.SystemMessage;
 import com.glsx.plat.jwt.base.ComJwtUser;
 import com.glsx.plat.jwt.util.JwtUtils;
@@ -39,10 +38,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.*;
@@ -98,7 +94,7 @@ public class UserService {
     private DepartmentService departmentService;
 
     public User getById(Long id) {
-        return userMapper.selectByPrimaryKey(id);
+        return userMapper.selectById(id);
     }
 
     public User findByAccount(String username) {
@@ -108,7 +104,7 @@ public class UserService {
     public UserDTO userInfo(Long userId) {
         UserDTO userDTO = null;
 
-        User user = userMapper.selectByPrimaryKey(userId);
+        User user = userMapper.selectById(userId);
         if (user != null) {
             userDTO = new UserDTO();
             BeanUtils.copyProperties(user, userDTO);
@@ -116,18 +112,18 @@ public class UserService {
             List<UserRoleRelation> userRoleRelations = userRoleRelationMapper.selectUserRoleRelationList(new UserRoleRelation().setUserId(userId));
             if (CollectionUtils.isNotEmpty(userRoleRelations) && userRoleRelations.get(0) != null) {
                 Long roleId = userRoleRelations.get(0).getId();
+                userDTO.setRoleId(roleId);
 
-                Role role = roleMapper.selectByPrimaryKey(roleId);
-
-                userDTO.setRoleName(role.getRoleName());
+                Role role = roleMapper.selectById(roleId);
+                userDTO.setRoleName(role != null ? role.getRoleName() : "");
             }
 
             Long departmentId = userDTO.getDepartmentId();
-            Department department = departmentMapper.selectByPrimaryKey(departmentId);
+            Department department = departmentMapper.selectById(departmentId);
             userDTO.setDepartmentName(department != null ? department.getDepartmentName() : "");
 
             Long superiorId = userDTO.getSuperiorId();
-            User superiorUser = userMapper.selectByPrimaryKey(superiorId);
+            User superiorUser = userMapper.selectById(superiorId);
             userDTO.setSuperiorName(superiorUser != null ? superiorUser.getUsername() : "");
         }
         return userDTO;
@@ -141,8 +137,6 @@ public class UserService {
 
         Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
 
-        Long userId = ShieldContextHolder.getUserId();
-
         Long userDeptId = ShieldContextHolder.getDepartment().getDeptId();
 
         Long departmentId = search.getDepartmentId();
@@ -152,7 +146,7 @@ public class UserService {
         if (oneself.getCode().equals(rolePermissionType)) {
             PageHelper.startPage(search.getPageNumber(), search.getPageSize());
 
-            userList = userMapper.selectList(search.setUserId(userId));
+            userList = userMapper.selectList(search.setUserId(ShieldContextHolder.getUserId()));
         } else if (selfDepartment.getCode().equals(rolePermissionType)) {
             search.setDepartmentId(userDeptId);
 
@@ -165,7 +159,7 @@ public class UserService {
             List<Long> departmentIds = subList.stream().map(Organization::getSubId).collect(Collectors.toList());
 
             PageHelper.startPage(search.getPageNumber(), search.getPageSize());
-            search.setUserId(userId);
+            search.setUserId(ShieldContextHolder.getUserId());
             search.setDepartmentIdList(departmentIds);
             userList = userMapper.selectDepartmentsSubordinate(search);
         } else if (subDepartment.getCode().equals(rolePermissionType)) {
@@ -186,13 +180,16 @@ public class UserService {
             List<Long> departmentIdList = subList.stream().map(Organization::getSubId).collect(Collectors.toList());
 
             PageHelper.startPage(search.getPageNumber(), search.getPageSize());
-            userList = userMapper.selectList(new UserSearch().setDepartmentIdList(departmentIdList));
+            search.setDepartmentIdList(departmentIdList);
+            userList = userMapper.selectList(search);
         } else {
             throw new UserCenterException(SystemMessage.FAILURE.getCode(), "未知的角色权限范围类型");
         }
 
-        List<UserDTO> userDTOList = userListAssembled(userList);
-
+        List<UserDTO> userDTOList = Lists.newLinkedList();
+        if (CollectionUtils.isNotEmpty(userList)) {
+            userDTOList = userListAssembled(userList);
+        }
         return new PageInfo<>(userDTOList);
     }
 
@@ -239,7 +236,7 @@ public class UserService {
         User user = new User(true);
         BeanUtils.copyProperties(userBO, user);
         generateAndSetPassword(user);
-        userMapper.insertSelective(user);
+        userMapper.insertUseGeneratedKeys(user);
 
         Long userId = user.getId();
 
@@ -258,6 +255,8 @@ public class UserService {
             int insertCnt = userPathMapper.insertUserPath(userPath);
             log.info("新增用户{}关系{}条", userId, insertCnt);
         }
+
+        userRoleRelationMapper.insert(new UserRoleRelation(true).setUserId(userId).setRoleId(userBO.getRoleId()));
     }
 
     public void editUser(UserBO userBO) {
@@ -274,7 +273,7 @@ public class UserService {
         //校验角色
         checkUserRole(userBO);
 
-        User user = new User(false);
+        User user = userMapper.selectById(userBO.getId());
         BeanUtils.copyProperties(userBO, user);
         user.setDepartmentId(null);
         user.setTenantId(null);
@@ -287,8 +286,19 @@ public class UserService {
             }
             generateAndSetPassword(user);
         }
-
         userMapper.updateByPrimaryKeySelective(user);
+
+        //更新角色关系
+        List<UserRoleRelation> relationList = userRoleRelationMapper.selectUserRoleRelationList(new UserRoleRelation().setUserId(user.getId()));
+        if (CollectionUtils.isNotEmpty(relationList)) {
+            UserRoleRelation relation = relationList.get(0);
+            if (!relation.getRoleId().equals(userBO.getRoleId())) {
+                relation.setRoleId(userBO.getRoleId());
+                relation.setUpdatedBy(ShieldContextHolder.getUserId());
+                relation.setUpdatedDate(new Date());
+                userRoleRelationMapper.updateByPrimaryKeySelective(relation);
+            }
+        }
     }
 
     /**
@@ -334,13 +344,12 @@ public class UserService {
         Organization superiorOrg = organizationMapper.selectSuperiorOrganization(userBO.getDepartmentId());
         if (superiorOrg != null) {
             User superiorUser = userMapper.selectById(userBO.getSuperiorId());
-            if (superiorUser == null) {
-                throw new UserCenterException(SystemMessage.FAILURE.getCode(), "上级用户不存在");
-            }
-            Long superiorUserDepartmentId = superiorUser.getDepartmentId();
-            if (org.apache.commons.lang.ObjectUtils.notEqual(superiorUserDepartmentId, userBO.getDepartmentId()) &&
-                    org.apache.commons.lang.ObjectUtils.notEqual(superiorUserDepartmentId, superiorOrg.getSuperiorId())) {
-                throw new UserCenterException(SystemMessage.FAILURE.getCode(), "上级用户范围不在本部门或上级部门");
+            if (superiorUser != null) {
+                Long superiorUserDeptId = superiorUser.getDepartmentId();
+                if (org.apache.commons.lang.ObjectUtils.notEqual(superiorUserDeptId, userBO.getDepartmentId()) &&
+                        org.apache.commons.lang.ObjectUtils.notEqual(superiorUserDeptId, superiorOrg.getSuperiorId())) {
+                    throw new UserCenterException(SystemMessage.FAILURE.getCode(), "上级用户范围不在本部门或上级部门");
+                }
             }
             userBO.setTenantId(superiorOrg.getTenantId());
         } else {
@@ -360,7 +369,7 @@ public class UserService {
         if (!isAdmin) {
             Long roleId = userBO.getRoleId();
 
-            Role role = roleMapper.selectByPrimaryKey(roleId);
+            Role role = roleMapper.selectById(roleId);
             if (onlyAdmin.getCode().equals(role.getRoleVisibility())) {
                 throw new UserCenterException(SystemMessage.FAILURE.getCode(), "该角色不可选");
             } else if (share.getCode().equals(role.getRoleVisibility())) {
@@ -424,6 +433,12 @@ public class UserService {
 
     }
 
+    /**
+     * 生成带用户信息的token
+     *
+     * @param user
+     * @return
+     */
     public String createToken(User user) {
         String uuid = UUID.randomUUID().toString(); //JWT 随机ID,做为验证的key
         String jwtId = jwtUtils.getApplication() + ":" + uuid + "_" + jwtUtils.JWT_SESSION_PREFIX + user.getId();
@@ -434,7 +449,7 @@ public class UserService {
         jwtUser.setAccount(user.getAccount());
         jwtUser.setDeptId(user.getDepartmentId());
 
-        Department department = departmentMapper.selectByPrimaryKey(user.getDepartmentId());
+        Department department = departmentMapper.selectById(user.getDepartmentId());
         jwtUser.setBelong(department == null ? "" : department.getDepartmentName());
 
         Map<String, Object> userMap = (Map<String, Object>) ObjectUtils.objectToMap(jwtUser);
@@ -447,11 +462,25 @@ public class UserService {
      */
     public User getByToken() {
         String token = SessionUtils.request().getHeader(BasicConstants.REQUEST_HEADERS_TOKEN);
-
         if (StringUtils.isNullOrEmpty(token)) {
             throw new UserCenterException(SystemMessage.ILLEGAL_ACCESS.getCode(), "登录已失效");
         }
 
+        ComJwtUser jwtUser = getJwtUserFromToken(token);
+        User user = this.getById(jwtUser.getUserId());
+        if (user == null) {
+            throw new UserCenterException(SystemMessage.ILLEGAL_ACCESS.getCode(), SystemMessage.ILLEGAL_ACCESS.getMsg());
+        }
+        return user;
+    }
+
+    /**
+     * 解析token生成用户对象
+     *
+     * @param token
+     * @return
+     */
+    private ComJwtUser getJwtUserFromToken(String token) {
         //解析token，反转成JwtUser对象
         Map<String, Object> userMap = jwtUtils.parseClaim(token, ComJwtUser.class);
         ComJwtUser jwtUser = null;
@@ -460,11 +489,18 @@ public class UserService {
         } catch (Exception e) {
             throw new UserCenterException(SystemMessage.ILLEGAL_ACCESS.getCode(), "登录已失效");
         }
-        User user = this.getById(jwtUser.getUserId());
-        if (user == null || !SysConstants.DeleteStatus.normal.getCode().equals(user.getDelFlag())) {
-            throw new UserCenterException(SystemMessage.ILLEGAL_ACCESS.getCode(), SystemMessage.ILLEGAL_ACCESS.getMsg());
+        return jwtUser;
+    }
+
+    /**
+     * 从redis删除token缓存
+     */
+    public void removeToken() {
+        String token = SessionUtils.request().getHeader(BasicConstants.REQUEST_HEADERS_TOKEN);
+        ComJwtUser jwtUser = getJwtUserFromToken(token);
+        if (jwtUser != null) {
+            jwtUtils.removeToken(jwtUser.getJwtId());
         }
-        return user;
     }
 
     /**
@@ -511,13 +547,17 @@ public class UserService {
 //            });
 
             List<Long> menuIdList = roleMenuMapper.selectMenuIdsByRoleIds(roleIds);
-            List<MenuPermission> permissionList = menuService.getMenuPermissions(menuIdList);
+            List<MenuPermission> permissionList = Lists.newArrayList();
+            if (CollectionUtils.isNotEmpty(menuIdList)) {
+                permissionList = menuService.getMenuPermissions(menuIdList);
+            }
             List<cn.com.glsx.auth.model.MenuPermission> list = new ArrayList<>(permissionList.size());
             permissionList.forEach(mp -> {
                 list.add(AuthMenuPermissionConverter.INSTANCE.toAuthMenuPermission(mp));
             });
             authUser.setMenuPermissionList(list);
         }
+
         return authUser;
     }
 
@@ -557,24 +597,20 @@ public class UserService {
         } else {
             throw new UserCenterException("未知角色权限查询类型");
         }
-
         return userIds;
     }
 
-    public SuperTreeModel suitableSuperUsers(Long departmentId) {
-        Department department = departmentMapper.selectByPrimaryKey(departmentId);
+    public List<SuperTreeModel> suitableSuperUsers(Long departmentId) {
+        Department department = departmentMapper.selectById(departmentId);
         if (department == null) {
             throw new UserCenterException("部门不存在");
         }
-        User userParam = new User().setDepartmentId(departmentId);
-        userParam.setDelFlag(0);
-        List<User> departmentUserList = userMapper.select(userParam);
-
-        SuperTreeModel superTreeModel = new SuperTreeModel();
+        List<User> departmentUserList = userMapper.select(new User().setDepartmentId(departmentId));
 
         Organization superiorOrganization = organizationMapper.selectSuperiorOrganization(departmentId);
         if (superiorOrganization == null) {
             //无上级
+            SuperTreeModel superTreeModel = new SuperTreeModel();
             superTreeModel.setId(departmentId);
             superTreeModel.setLabel(department.getDepartmentName());
             superTreeModel.setOrder(department.getOrderNum());
@@ -584,17 +620,18 @@ public class UserService {
 
             superTreeModel.setChildren(children);
 
-            return superTreeModel;
+            return Lists.newArrayList(superTreeModel);
         }
 
         Long superiorId = superiorOrganization.getSuperiorId();
-        Department superiorDepartment = departmentMapper.selectByPrimaryKey(superiorId);
+        Department superiorDepartment = departmentMapper.selectById(superiorId);
+
+        SuperTreeModel superTreeModel = new SuperTreeModel();
         superTreeModel.setId(superiorDepartment.getId());
         superTreeModel.setLabel(superiorDepartment.getDepartmentName());
         superTreeModel.setOrder(superiorDepartment.getOrderNum());
 
-        userParam.setDepartmentId(superiorId);
-        List<User> superiorUserList = userMapper.select(userParam);
+        List<User> superiorUserList = userMapper.select(new User().setDepartmentId(superiorId));
 
         List<SuperTreeModel> children = superiorUserList.stream().map(UserService::applySuperTreeModel).collect(Collectors.toList());
 
@@ -611,7 +648,7 @@ public class UserService {
 
         departmentModel.setChildren(departmentUserModels);
 
-        return superTreeModel;
+        return Lists.newArrayList(superTreeModel);
     }
 
     private static SuperTreeModel applySuperTreeModel(User du) {

@@ -3,23 +3,19 @@ package cn.com.glsx.neshield.modules.service;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.converter.RoleConverter;
-import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.Role;
 import cn.com.glsx.neshield.modules.entity.RoleMenu;
 import cn.com.glsx.neshield.modules.entity.UserRoleRelation;
-import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.RoleMapper;
 import cn.com.glsx.neshield.modules.mapper.RoleMenuMapper;
 import cn.com.glsx.neshield.modules.mapper.UserRoleRelationMapper;
 import cn.com.glsx.neshield.modules.model.param.RoleBO;
 import cn.com.glsx.neshield.modules.model.param.RoleSearch;
-import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.model.view.RoleDTO;
 import cn.com.glsx.neshield.modules.model.view.SimpleRoleDTO;
 import cn.hutool.core.collection.CollectionUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.exception.SystemMessage;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
@@ -31,9 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static cn.com.glsx.admin.common.constant.UserConstants.RoleVisibility.*;
@@ -54,9 +48,6 @@ public class RoleService {
     @Resource
     private RoleMenuMapper roleMenuMapper;
 
-    @Resource
-    private DepartmentMapper departmentMapper;
-
     public PageInfo<RoleDTO> search(RoleSearch search) {
 
         PageHelper.startPage(search.getPageNumber(), search.getPageSize());
@@ -70,43 +61,19 @@ public class RoleService {
 
     private List<RoleDTO> getRoleListAssembled(List<Role> list) {
 
-        List<Long> departmentIdList = Lists.newArrayList();
-
-        list.forEach(role -> {
-            if (StringUtils.isNotEmpty(role.getRoleTenants())) {
-                String[] roleTenantsStr = role.getRoleTenants().split(",");
-                Long[] roleTenantIds = (Long[]) ConvertUtils.convert(roleTenantsStr, Long.class);
-                Collections.addAll(departmentIdList, roleTenantIds);
-            }
-        });
-
-        List<Department> departmentList = departmentMapper.selectByIds(departmentIdList);
-
-        Map<Long, Department> departmentMap = departmentList.stream().collect(Collectors.toMap(Department::getId, d -> d));
+//        List<Long> departmentIdList = Lists.newArrayList();
+//
+//        list.forEach(role -> {
+//            if (StringUtils.isNotEmpty(role.getRoleTenants())) {
+//                String[] roleTenantsStr = role.getRoleTenants().split(",");
+//                Long[] roleTenantIds = (Long[]) ConvertUtils.convert(roleTenantsStr, Long.class);
+//                Collections.addAll(departmentIdList, roleTenantIds);
+//            }
+//        });
 
         List<RoleDTO> roleDtoList = list.stream().map(role -> {
-
             RoleDTO roleDTO = new RoleDTO();
-
             BeanUtils.copyProperties(role, roleDTO);
-            //获取指定租户
-            if (specifyTenants.getCode().equals(role.getRoleVisibility())) {
-                String roleTenants = role.getRoleTenants();
-                if (StringUtils.isNotEmpty(roleTenants)) {
-                    String[] roleTenantsStr = role.getRoleTenants().split(",");
-
-                    Long[] roleTenantIds = (Long[]) ConvertUtils.convert(roleTenantsStr, Long.class);
-
-                    List<DepartmentDTO> roleDepartmentList = Lists.newArrayList();
-                    for (Long departmentId : roleTenantIds) {
-                        Department department = departmentMap.get(departmentId);
-                        DepartmentDTO departmentDTO = new DepartmentDTO();
-                        BeanUtils.copyProperties(department, departmentDTO);
-                        roleDepartmentList.add(departmentDTO);
-                    }
-                    roleDTO.setRoleTenants(roleDepartmentList);
-                }
-            }
             return roleDTO;
         }).collect(Collectors.toList());
 
@@ -130,7 +97,7 @@ public class RoleService {
     }
 
     public Role getRoleById(Long roleId) {
-        return roleMapper.selectByPrimaryKey(roleId);
+        return roleMapper.selectById(roleId);
     }
 
     public int modifyRole(Role role) {
@@ -189,9 +156,7 @@ public class RoleService {
 
         checkRole(roleBO);
 
-        Role role = RoleConverter.INSTANCE.boToDo(roleBO);
-
-        role.setRoleTenants(getRoleTenants(roleBO));
+        Role role = RoleConverter.INSTANCE.bo2do(roleBO);
 
         role.setContextInfo(true);
 
@@ -212,9 +177,7 @@ public class RoleService {
 
         checkRole(roleBO);
 
-        Role role = RoleConverter.INSTANCE.boToDo(roleBO);
-
-        role.setRoleTenants(getRoleTenants(roleBO));
+        Role role = RoleConverter.INSTANCE.bo2do(roleBO);
 
         role.setContextInfo(false);
 
@@ -251,49 +214,12 @@ public class RoleService {
         }
     }
 
-    public String getRoleTenants(RoleBO roleBO) {
-        if (specifyTenants.getCode().equals(roleBO.getVisibleType())) {
-
-            if (CollectionUtils.isEmpty(roleBO.getVisibleTenant())) {
-                throw UserCenterException.of(SystemMessage.ARGS_ERROR);
-            }
-
-            List<Long> visibleTenant = roleBO.getVisibleTenant();
-
-            return StringUtils.join(visibleTenant, ',');
-        }
-        return null;
-    }
-
     public RoleDTO roleInfo(Long id) {
         RoleDTO roleDTO = null;
-
-        Role role = roleMapper.selectByPrimaryKey(id);
+        Role role = roleMapper.selectById(id);
         if (role != null) {
             roleDTO = new RoleDTO();
-
             BeanUtils.copyProperties(role, roleDTO);
-
-            if (StringUtils.isNotEmpty(role.getRoleTenants())) {
-                String[] roleTenantsStr = role.getRoleTenants().split(",");
-
-                Long[] roleTenantIds = (Long[]) ConvertUtils.convert(roleTenantsStr, Long.class);
-
-                List<Long> departmentIdList = Lists.newLinkedList();
-
-                Collections.addAll(departmentIdList, roleTenantIds);
-
-                List<Department> departmentList = departmentMapper.selectByIds(departmentIdList);
-
-                List<DepartmentDTO> departmentDTOList = departmentList.stream().map(dep -> {
-                            DepartmentDTO departmentDTO = new DepartmentDTO();
-                            BeanUtils.copyProperties(dep, departmentDTO);
-                            return departmentDTO;
-                        }
-                ).collect(Collectors.toList());
-
-                roleDTO.setRoleTenants(departmentDTOList);
-            }
         }
         return roleDTO;
     }

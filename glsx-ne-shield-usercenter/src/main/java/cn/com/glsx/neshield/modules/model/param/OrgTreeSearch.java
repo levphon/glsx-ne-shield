@@ -3,7 +3,7 @@ package cn.com.glsx.neshield.modules.model.param;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import java.util.List;
+import java.util.Collection;
 
 /**
  * @author payu
@@ -18,6 +18,8 @@ public class OrgTreeSearch {
 
     private String orgName;
 
-    private List<Long> orgIds;
+    private Collection<Long> orgIds;
+
+    private Integer rolePermissionType;
 
 }

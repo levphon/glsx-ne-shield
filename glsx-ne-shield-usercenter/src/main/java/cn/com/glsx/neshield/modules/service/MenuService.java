@@ -15,12 +15,14 @@ import cn.com.glsx.neshield.modules.model.MenuTreeModel;
 import cn.com.glsx.neshield.modules.model.export.MenuExport;
 import cn.com.glsx.neshield.modules.model.param.MenuBO;
 import cn.com.glsx.neshield.modules.model.param.MenuSearch;
+import cn.com.glsx.neshield.modules.model.param.MenuTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.UserSearch;
 import cn.com.glsx.neshield.modules.model.view.MenuDTO;
 import com.github.pagehelper.PageInfo;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.glsx.plat.redis.utils.RedisUtils;
 import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,7 @@ import static cn.com.glsx.admin.common.constant.RedisConstants.MENU_NO_LOCK;
 /**
  * @author: taoyr
  **/
+@Slf4j
 @Service
 public class MenuService {
 
@@ -56,6 +59,12 @@ public class MenuService {
 
     public PageInfo<MenuDTO> search(MenuSearch search) {
         List<MenuDTO> list = menuMapper.selectList(search);
+        list.forEach(m -> {
+            int cnt = menuMapper.selectChildrenCntByParentId(m.getMenuNo());
+            m.setHasChildren(cnt > 0);
+
+            setParentMenuInfo(m);
+        });
         return new PageInfo<>(list);
     }
 
@@ -67,9 +76,26 @@ public class MenuService {
         List<Menu> menuList = menuMapper.selectMenuListByParentId(parentId);
         List<MenuDTO> list = new ArrayList<>(menuList.size());
         for (Menu menu : menuList) {
-            list.add(MenuConverter.INSTANCE.do2dto(menu));
+            MenuDTO menuDTO = MenuConverter.INSTANCE.do2dto(menu);
+
+            int cnt = menuMapper.selectChildrenCntByParentId(menuDTO.getMenuNo());
+            menuDTO.setHasChildren(cnt > 0);
+
+            setParentMenuInfo(menuDTO);
+
+            list.add(menuDTO);
         }
         return list;
+    }
+
+    private void setParentMenuInfo(MenuDTO menuDTO) {
+        if (menuDTO.getParentId() != 0L) {
+            Menu pMenu = menuMapper.selectByMenuNo(menuDTO.getParentId());
+            if (pMenu != null) {
+                menuDTO.setPpId(pMenu.getId());
+                menuDTO.setParentName(pMenu.getMenuName());
+            }
+        }
     }
 
     /**
@@ -84,11 +110,11 @@ public class MenuService {
         if (ShieldContextHolder.isSuperAdmin()) {
             modelList = menuMapper.selectMenuFullTree();
         } else {
-            modelList = menuMapper.selectMenuPermTree(roleIds, MenuType.getAllTypes());
+            modelList = menuMapper.selectMenuPermTree(new MenuTreeSearch().setRoleIds(roleIds).setMenuTypes(MenuType.getAllTypes()));
         }
         //被编辑角色的权限,editRoleId==null为新增角色时查询
         if (editRoleId != null) {
-            List<MenuModel> permMenuList = menuMapper.selectMenuPermTree(Lists.newArrayList(editRoleId), MenuType.getAllTypes());
+            List<MenuModel> permMenuList = menuMapper.selectMenuPermTree(new MenuTreeSearch().setRoleIds(Lists.newArrayList(editRoleId)).setMenuTypes(MenuType.getAllTypes()));
             modelList.forEach(mm -> {
                 for (MenuModel mm2 : permMenuList) {
                     if (mm.getMenuNo().equals(mm2.getMenuNo())) {
@@ -104,6 +130,12 @@ public class MenuService {
         return menuTree;
     }
 
+    public List<Long> getMenuCheckedIds(Long editRoleId) {
+        List<MenuModel> permMenuList = menuMapper.selectMenuPermTree(new MenuTreeSearch().setRoleIds(Lists.newArrayList(editRoleId)).setMenuTypes(MenuType.getAllTypes()));
+        List<Long> menuIds = permMenuList.stream().map(MenuModel::getMenuNo).distinct().collect(Collectors.toList());
+        return menuIds;
+    }
+
     /**
      * 获取菜单树-带权限
      *
@@ -111,7 +143,9 @@ public class MenuService {
      * @return
      */
     public List<MenuModel> getMenuTree(List<Long> roleIds) {
-        List<MenuModel> modelList = menuMapper.selectMenuPermTree(roleIds, Lists.newArrayList(MenuType.DIRECTORY.getCode(), MenuType.MENU.getCode()));
+        List<MenuModel> modelList = menuMapper.selectMenuPermTree(
+                new MenuTreeSearch().setRoleIds(roleIds).setMenuTypes(Lists.newArrayList(MenuType.DIRECTORY.getCode(), MenuType.MENU.getCode()))
+        );
         List<MenuTreeModel> menuTreeModelList = modelList.stream().map(MenuTreeModel::new).collect(Collectors.toList());
         List menuTree = TreeModelUtil.fastConvertByRootId(menuTreeModelList, 0L);
         Collections.sort(menuTree, Comparator.comparing(MenuTreeModel::getOrder));
@@ -163,6 +197,7 @@ public class MenuService {
                 List<Menu> menus = menuMapper.selectMenuListByParentId(0L);
                 long maxMenuNo = menus.stream().map(Menu::getMenuNo).mapToLong(Long::parseLong).max().orElse(0L);
                 maxMenuNo = maxMenuNo + startNo;
+
                 if (maxMenuNo <= startNo) {
                     menuNo = String.valueOf(maxMenuNo + 1);
                 } else {
@@ -184,8 +219,17 @@ public class MenuService {
         return Long.parseLong(menuNo);
     }
 
-    public Menu getMenuById(Long id) {
-        return menuMapper.selectByPrimaryKey(id);
+    public MenuDTO getMenuById(Long id) {
+        Menu menu = menuMapper.selectById(id);
+        MenuDTO menuDTO = MenuConverter.INSTANCE.do2dto(menu);
+        if (menuDTO.getParentId() != 0L) {
+            Menu pMenu = menuMapper.selectByMenuNo(menuDTO.getParentId());
+            if (pMenu != null) {
+                menuDTO.setPpId(pMenu.getId());
+                menuDTO.setParentName(pMenu.getMenuName());
+            }
+        }
+        return menuDTO;
     }
 
     public void add(MenuBO menuBO) {
@@ -194,7 +238,15 @@ public class MenuService {
 
         Long menuNo = generateMenuNo(menu.getParentId());
         menu.setMenuNo(String.valueOf(menuNo));
+        if (menu.getParentId() == null) {
+            menu.setParentId(0L);
+        }
         menuMapper.insertUseGeneratedKeys(menu);
+
+        MenuPermission permission = new MenuPermission();
+        permission.setPermissionTag(menu.getPermissionTag());
+        permission.setInterfaceUrl(menu.getPermissionTag());
+        menuPermissionMapper.insert(permission);
 
         //如果是超级管理员，创建菜单自动分配权限到超级管理员角色
         if (ShieldContextHolder.isSuperAdmin()) {
@@ -206,7 +258,7 @@ public class MenuService {
     }
 
     public void edit(MenuBO menuBO) {
-//        Menu dbMenu = menuMapper.selectByPrimaryKey(menu.getId());
+//        Menu dbMenu = menuMapper.selectById(menu.getId());
 //        if (!dbMenu.getParentId().equals(menu.getParentId()) || !dbMenu.getType().equals(menu.getType())) {
 //        }
         Menu menu = new Menu(false);
@@ -219,7 +271,10 @@ public class MenuService {
     }
 
     public void logicDeleteById(Long id) {
-        menuMapper.logicDeleteById(id);
+        Menu menu = menuMapper.selectById(id);
+        log.warn("{}删除菜单{}", ShieldContextHolder.getUsername(), menu.toString());
+//        menuMapper.logicDeleteById(id);
+        menuMapper.deleteByPrimaryKey(id);
     }
 
 }
