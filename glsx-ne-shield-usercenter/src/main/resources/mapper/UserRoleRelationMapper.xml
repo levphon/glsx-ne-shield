@@ -14,16 +14,17 @@
     <sql id="Base_Column_List">
     id, user_id, role_id, del_flag, created_date, created_by, updated_date, updated_by
   </sql>
-    
+
     <select id="selectUserRoleRelationList" resultMap="BaseResultMap">
-        select <include refid="Base_Column_List"/>
-        from t_user_role_relation
-        where del_flag = 0
+        select turr.*
+        from t_user_role_relation turr,t_user tu
+        where turr.del_flag = 0 and tu.del_flag = 0
+        and turr.user_id = tu.id
         <if test="userId != null">
-            and user_id = #{userId}
+            and turr.user_id = #{userId}
         </if>
         <if test="roleId != null">
-            and role_id = #{roleId}
+            and turr.role_id = #{roleId}
         </if>
     </select>
 </mapper>

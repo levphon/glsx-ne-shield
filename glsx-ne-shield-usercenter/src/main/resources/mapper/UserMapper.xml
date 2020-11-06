@@ -61,30 +61,33 @@
         select
         <include refid="Base_Column_List"/>
         from t_user where del_flag = 0
-        <if test="searchField != null">
+        <if test="searchField != null and searchField !=''">
             and (
-            account like CONCAT('%',#{searchField},'%')
-            or
-            phone_number like CONCAT('%',#{searchField},'%')
-            or
-            username like CONCAT('%',#{searchField},'%')
+                account like CONCAT('%',#{searchField},'%')
+                or
+                phone_number like CONCAT('%',#{searchField},'%')
+                or
+                username like CONCAT('%',#{searchField},'%')
+                or
+                id = #{searchField}
             )
-        </if>
-        <if test="userStatus != null">
-            and enable_status = #{userStatus}
-        </if>
-        <if test="departmentId != null">
-            and department_id = #{departmentId}
         </if>
         <if test="userId != null">
             and user_id = #{userId}
         </if>
+        <if test="userStatus != null">
+            and enable_status = #{userStatus}
+        </if>
+<!--        <if test="departmentId != null">-->
+<!--            and department_id = #{departmentId}-->
+<!--        </if>-->
         <if test="departmentIdList != null and departmentIdList.size() > 0">
             and department_id in
             <foreach collection="departmentIdList" item="departmentId" open="(" close=")" separator=",">
                 #{departmentId}
             </foreach>
         </if>
+        order by id desc
     </select>
 
     <update id="logicDeleteById">
@@ -92,7 +95,7 @@
   </update>
 
     <select id="countByCriterial" parameterType="cn.com.glsx.neshield.modules.model.param.UserBO"
-            resultMap="BaseResultMap">
+            resultType="java.lang.Integer">
         select count(*) from t_user
         where del_flag = 0
         <if test="departmentId != null">

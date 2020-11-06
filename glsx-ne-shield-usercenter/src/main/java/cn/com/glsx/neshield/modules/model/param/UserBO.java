@@ -19,7 +19,7 @@ public class UserBO {
 
     private Long id;
 
-    @Size(max = 50)
+    @Size(min = 5, max = 50)
     @NotBlank
     private String account;
 
@@ -34,7 +34,7 @@ public class UserBO {
      */
     private Long superiorId;
 
-    @Size(max = 50)
+    @Size(min = 2, max = 50)
     @NotBlank
     private String username;
 
@@ -44,7 +44,7 @@ public class UserBO {
     private Long roleId;
 
     @NotBlank
-    @Pattern(regexp = RegexUtil.mobileRegex)
+    @Pattern(regexp = RegexUtil.mobileRegex, message = "手机号码格式有误")
     private String phoneNumber;
 
     private String email;

@@ -6,7 +6,6 @@ import cn.com.glsx.neshield.modules.entity.Department;
 import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
-import cn.com.glsx.neshield.modules.mapper.UserMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.OrgSuperiorModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
@@ -35,9 +34,6 @@ public class AllStrategy extends PermissionStrategy {
 
     @Resource
     private OrganizationMapper organizationMapper;
-
-    @Resource
-    private UserMapper userMapper;
 
     @Resource
     private DepartmentMapper departmentMapper;

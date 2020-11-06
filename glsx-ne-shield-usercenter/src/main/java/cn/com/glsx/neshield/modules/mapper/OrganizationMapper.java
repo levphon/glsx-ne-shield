@@ -98,6 +98,14 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
     Organization selectSuperiorOrganization(Long organizationId);
 
     /**
+     * 逻辑删除
+     *
+     * @param subId
+     * @return
+     */
+    int logicDeleteSelfBySubId(Long subId);
+
+    /**
      * 删除所有
      *
      * @param organizationId

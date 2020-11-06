@@ -22,6 +22,10 @@ public interface SysDictTypeMapper extends CommonBaseMapper<SysDictType> {
 
     SysDictType selectByType(@Param("type") String dictType);
 
+    SysDictType selectByNameWithDeleted(@Param("name") String dictName);
+
+    SysDictType selectByTypeWithDeleted(@Param("type") String dictType);
+
     int logicDeleteById(@Param("id") Long id);
 
 }

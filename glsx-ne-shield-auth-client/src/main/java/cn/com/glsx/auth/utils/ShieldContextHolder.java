@@ -1,7 +1,6 @@
 package cn.com.glsx.auth.utils;
 
 import cn.com.glsx.auth.model.*;
-import com.google.common.collect.Lists;
 import lombok.NoArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.util.Assert;
@@ -51,15 +50,15 @@ public class ShieldContextHolder {
         return user.getUserId();
     }
 
-    public static String getUsername() {
+    public static String getAccount() {
         SyntheticUser user = getUser();
-        return user.getUsername();
+        return user.getAccount();
     }
 
-    public static UserGroup getUserGroup() {
-        SyntheticUser user = getUser();
-        return user.getUserGroup();
-    }
+//    public static UserGroup getUserGroup() {
+//        SyntheticUser user = getUser();
+//        return user.getUserGroup();
+//    }
 
     public static Tenant getTenant() {
         SyntheticUser user = getUser();
@@ -99,8 +98,8 @@ public class ShieldContextHolder {
      * @return
      */
     public static List<Long> getCreatorIds() {
-        //TODO
-        return Lists.newArrayList();
+        SyntheticUser user = getUser();
+        return user.getOwnerIdList();
     }
 
     public static List<MenuPermission> getUserMenuPermissions() {

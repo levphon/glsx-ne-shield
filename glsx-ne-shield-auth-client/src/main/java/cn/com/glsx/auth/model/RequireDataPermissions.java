@@ -17,6 +17,8 @@ public @interface RequireDataPermissions {
      */
     String linkTable() default "";
 
+    String linkTableAlias() default "";
+
     /**
      * 需要进行过滤的连表id(增删改操作不需要)
      *

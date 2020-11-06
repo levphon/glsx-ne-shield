@@ -83,7 +83,7 @@ public class OrganizationController {
         return R.ok();
     }
 
-    @RequireFunctionPermissions(permissionType = FunctionPermissionType.ORG_DELETE)
+//    @RequireFunctionPermissions(permissionType = FunctionPermissionType.ORG_DELETE)
     @SysLog(module = MODULE, action = OperateType.DELETE)
     @GetMapping("/delete")
     public R deleteOrganization(@RequestParam("id") Long organizationId) {

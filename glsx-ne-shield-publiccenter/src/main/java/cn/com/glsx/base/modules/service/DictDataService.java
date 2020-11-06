@@ -11,6 +11,7 @@ import cn.com.glsx.base.modules.model.export.DictDataExport;
 import cn.com.glsx.base.modules.model.export.DictTypeExport;
 import cn.com.glsx.base.modules.utils.DictUtils;
 import com.github.pagehelper.PageInfo;
+import com.glsx.plat.core.enums.SysConstants;
 import com.glsx.plat.exception.BusinessException;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
@@ -76,71 +77,95 @@ public class DictDataService implements InitializingBean {
      * @return 字典数据集合信息
      */
     public List<DictDataDTO> getDictDataByTypeWithCached(String dictType) {
-        List<DictDataDTO> dictDatas = dictUtils.getDictCache(dictType);
+        // TODO: 2020/11/2 使用缓存
+        List<DictDataDTO> dictDatas = Lists.newArrayList();//dictUtils.getDictCache(dictType);
         if (CollectionUtils.isNotEmpty(dictDatas)) {
             return dictDatas;
         }
         dictDatas = dataMapper.selectByTypeWithDeleted(dictType);
         if (CollectionUtils.isNotEmpty(dictDatas)) {
+            dictDatas.forEach(dd -> {
+                boolean disabled = !SysConstants.DeleteStatus.normal.getCode().equals(dd.getDelFlag())
+                        || !SysConstants.EnableStatus.enable.getCode().equals(dd.getEnableStatus());
+                dd.setDisabled(disabled);
+            });
             dictUtils.setDictCache(dictType, dictDatas);
             return dictDatas;
         }
-        return null;
+        return Lists.newArrayList();
     }
 
     public void addType(SysDictType type) {
         checkAddType(type);
+        // TODO: 2020/11/2 更新缓存
         typeMapper.insert(type);
     }
 
     public void editType(SysDictType type) {
         checkEditType(type);
+        // TODO: 2020/11/2 更新缓存
         typeMapper.updateByPrimaryKeySelective(type);
     }
 
     public void addData(SysDictData data) {
         checkAddData(data);
+        // TODO: 2020/11/2 更新缓存
         dataMapper.insert(data);
     }
 
     public void editData(SysDictData data) {
         checkEditData(data);
+        // TODO: 2020/11/2 更新缓存
         dataMapper.updateByPrimaryKeySelective(data);
     }
 
     private void checkAddType(SysDictType type) {
-        SysDictType dbType = typeMapper.selectByType(type.getDictType());
-        if (dbType != null) {
-            throw BusinessException.create("字典类型已存在");
+        SysDictType dbType1 = typeMapper.selectByNameWithDeleted(type.getDictName());
+        if (dbType1 != null) {
+            boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbType1.getDelFlag());
+            throw BusinessException.create("字典名称已存在" + (delFlag ? "，但处于删除状态" : ""));
+        }
+        SysDictType dbType2 = typeMapper.selectByTypeWithDeleted(type.getDictType());
+        if (dbType2 != null) {
+            boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbType2.getDelFlag());
+            throw BusinessException.create("字典类型已存在" + (delFlag ? "，但处于删除状态" : ""));
         }
     }
 
     private void checkEditType(SysDictType type) {
-        SysDictType dbType = typeMapper.selectByType(type.getDictType());
-        if (dbType != null && !dbType.getId().equals(type.getId())) {
-            throw BusinessException.create("字典类型已存在");
+        SysDictType dbType1 = typeMapper.selectByNameWithDeleted(type.getDictName());
+        if (dbType1 != null && !dbType1.getId().equals(type.getId())) {
+            boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbType1.getDelFlag());
+            throw BusinessException.create("字典名称已存在" + (delFlag ? "，但处于删除状态" : ""));
+        }
+        SysDictType dbType2 = typeMapper.selectByTypeWithDeleted(type.getDictType());
+        if (dbType2 != null && !dbType2.getId().equals(type.getId())) {
+            boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbType2.getDelFlag());
+            throw BusinessException.create("字典类型已存在" + (delFlag ? "，但处于删除状态" : ""));
         }
     }
 
     private void checkAddData(SysDictData data) {
         SysDictData condition = new SysDictData()
                 .setDictType(data.getDictType())
-                .setDictLabel(data.getDictLabel())
                 .setDictValue(data.getDictValue());
+        condition.setDelFlag(null);
         SysDictData dbData = dataMapper.selectOne(condition);
         if (dbData != null) {
-            throw BusinessException.create("字典数据已存在");
+            boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbData.getDelFlag());
+            throw BusinessException.create("字典数据已存在" + (delFlag ? "，但处于删除状态" : ""));
         }
     }
 
     private void checkEditData(SysDictData data) {
-        SysDictData dbData = dataMapper.selectOne(new SysDictData()
+        SysDictData condition = new SysDictData()
                 .setDictType(data.getDictType())
-                .setDictLabel(data.getDictLabel())
-                .setDictValue(data.getDictValue())
-        );
+                .setDictValue(data.getDictValue());
+        condition.setDelFlag(null);
+        SysDictData dbData = dataMapper.selectOne(condition);
         if (dbData != null && !dbData.getId().equals(data.getId())) {
-            throw BusinessException.create("字典数据已存在");
+            boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbData.getDelFlag());
+            throw BusinessException.create("字典数据已存在" + (delFlag ? "，但处于删除状态" : ""));
         }
     }
 
@@ -153,10 +178,12 @@ public class DictDataService implements InitializingBean {
     }
 
     public void logicDeleteTypeById(Long id) {
+        // TODO: 2020/11/2 更新缓存
         typeMapper.logicDeleteById(id);
     }
 
     public void logicDeleteDataById(Long id) {
+        // TODO: 2020/11/2 更新缓存
         dataMapper.logicDeleteById(id);
     }
 

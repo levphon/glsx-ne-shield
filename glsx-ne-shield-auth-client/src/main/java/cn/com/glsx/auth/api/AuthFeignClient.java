@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 /**
  * @author payu
  */
-@FeignClient(name = "glsx-ne-shield-usercenter", contextId = "authcenter", path = "/usercenter/api/auth/")
+@FeignClient(name = "glsx-ne-shield-usercenter", contextId = "authcenter", path = "/usercenter/auth/")
 public interface AuthFeignClient {
 
     /**

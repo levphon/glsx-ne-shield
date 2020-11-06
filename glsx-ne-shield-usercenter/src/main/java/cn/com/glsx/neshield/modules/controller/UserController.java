@@ -57,10 +57,11 @@ public class UserController extends BaseController {
     @PostMapping(value = "/add")
     public R add(@RequestBody @Validated UserBO userBO) {
 //        User user = UserConverter.INSTANCE.bo2do(userBO);
-        String password = userBO.getPassword();
-        if (StringUtils.isBlank(password) || !RegexUtil.regexPwd(password)) {
-            return R.error(SystemMessage.ARGS_ERROR.getCode(), "密码格式错误");
-        }
+//        String password = userBO.getPassword();
+//        if (StringUtils.isBlank(password) || !RegexUtil.regexPwd(password)) {
+//            return R.error(SystemMessage.ARGS_ERROR.getCode(), "密码格式错误");
+//        }
+        AssertUtils.isNull(userBO.getPassword(), "密码不能为空");
         userService.addUser(userBO);
         return R.ok();
     }

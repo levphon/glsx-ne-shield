@@ -59,7 +59,10 @@ public class WebFunctionPermissionInterceptor implements HandlerInterceptor {
         response.setCharacterEncoding("UTF-8");
         response.setContentType("application/json; charset=utf-8");
         try (PrintWriter writer = response.getWriter()) {
-            writer.write(JSON.toJSONString(R.error(SystemMessage.PERMISSION_DENIED.getCode(), SystemMessage.PERMISSION_DENIED.getMsg())));
+            writer.write(JSON.toJSONString(R.error(
+                    SystemMessage.OPERATE_PERMISSION_DENIED.getCode(),
+                    SystemMessage.OPERATE_PERMISSION_DENIED.getMsg())
+            ));
             writer.flush();
         }
     }

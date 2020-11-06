@@ -19,6 +19,8 @@ public class UserDTO {
 
     private String departmentName;
 
+    private Integer deptDepth;
+
     private String phoneNumber;
 
     /**

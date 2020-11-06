@@ -59,7 +59,7 @@ public class SubDepartmentStrategy extends PermissionStrategy {
         //本部门
         Department department = departmentMapper.selectById(departmentId);
         list.add(department);
-        log.info("用户{} {}部门数为{}", ShieldContextHolder.getUsername(), UserConstants.RolePermitCastType.subDepartment.getValue(), list.size());
+        log.info("用户{} {}部门数为{}", ShieldContextHolder.getAccount(), UserConstants.RolePermitCastType.subDepartment.getValue(), list.size());
         return list;
     }
 

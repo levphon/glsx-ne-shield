@@ -4,8 +4,8 @@ import cn.com.glsx.base.modules.converter.DictDataConverter;
 import cn.com.glsx.base.modules.entity.SysDictData;
 import cn.com.glsx.base.modules.model.DictDataBO;
 import cn.com.glsx.base.modules.model.DictDataDTO;
-import cn.com.glsx.base.modules.model.export.DictDataExport;
 import cn.com.glsx.base.modules.model.DictDataSearch;
+import cn.com.glsx.base.modules.model.export.DictDataExport;
 import cn.com.glsx.base.modules.service.DictDataService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -64,7 +64,6 @@ public class DictDataController {
         SysDictData data = DictDataConverter.INSTANCE.bo2do(dataBO);
         if (StringUtils.isNullOrEmpty(data.getIsDefault())) data.setIsDefault("N");
 
-        // TODO: 2020/10/14 更新缓存
         dictDataService.addData(data);
         return R.ok();
     }
@@ -75,7 +74,6 @@ public class DictDataController {
         AssertUtils.isNull(dataBO.getId(), "ID不能为空");
         SysDictData data = DictDataConverter.INSTANCE.bo2do(dataBO);
 
-        // TODO: 2020/10/14 更新缓存
         dictDataService.editData(data);
         return R.ok();
     }

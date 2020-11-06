@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 public class DeviceService {
 
     public String test() {
-        String username = ShieldContextHolder.getUsername();
+        String username = ShieldContextHolder.getAccount();
         return username;
     }
 

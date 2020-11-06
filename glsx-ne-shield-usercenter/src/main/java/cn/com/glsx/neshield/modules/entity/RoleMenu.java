@@ -39,5 +39,5 @@ public class RoleMenu extends BaseEntity {
      * 菜单id
      */
     @Column(name = "menu_id")
-    private Long menuId;
+    private Long menuNo;
 }

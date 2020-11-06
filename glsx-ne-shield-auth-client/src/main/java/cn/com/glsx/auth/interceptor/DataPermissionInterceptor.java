@@ -1,9 +1,7 @@
 package cn.com.glsx.auth.interceptor;
 
-import cn.com.glsx.auth.model.ParameterAnnotationHolder;
 import cn.com.glsx.auth.model.RequireDataPermissions;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
-import com.glsx.plat.common.utils.ReflectUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
@@ -96,32 +94,17 @@ public class DataPermissionInterceptor implements Interceptor {
 //                }
 
                 //拼装sql(这里是关键！！！)
-                BoundSql boundSql = (BoundSql) metaStatementHandler.getValue("delegate.boundSql");
-                String originSql = boundSql.getSql(); //获取到当前需要被执行的SQL
-                String authSql = makeSql(originSql, dataPermissions); //进行数据权限过滤组装
-                //替换
-                MappedStatement newStatement = newMappedStatement(mappedStatement, new BoundSqlSqlSource(boundSql));
-                MetaObject msObject = MetaObject.forObject(newStatement, new DefaultObjectFactory(), new DefaultObjectWrapperFactory(), new DefaultReflectorFactory());
-                msObject.setValue("sqlSource.boundSql.sql", authSql);
-//                invocation.getArgs()[0] = newStatement;
-                log.debug("baseSql:{} authSql:{}", originSql, authSql);
-
-                MapperMethod.ParamMap paramMap = (MapperMethod.ParamMap) boundSql.getParameterObject();
-
-                ParameterAnnotationHolder holder = new ParameterAnnotationHolder();
-                Integer type = holder.getType();
-                String parameterName = holder.getParameterName();
-                Object o = paramMap.get(parameterName);
-
-                if (type == 1) {
-                    ReflectUtils.getObjectValue(o);//获取值&类型 id
-                    List<Long> creatorIds = ShieldContextHolder.getCreatorIds();
-                    //是否有操作权限
-
-                } else if (type == 2) {
-
-                }
-
+//                BoundSql boundSql = (BoundSql) metaStatementHandler.getValue("delegate.boundSql");
+//                String originSql = boundSql.getSql(); //获取到当前需要被执行的SQL
+//                String authSql = makeSql(originSql, dataPermissions); //进行数据权限过滤组装
+//                //替换
+//                MappedStatement newStatement = newMappedStatement(mappedStatement, new BoundSqlSqlSource(boundSql));
+//                MetaObject msObject = MetaObject.forObject(newStatement, new DefaultObjectFactory(), new DefaultObjectWrapperFactory(), new DefaultReflectorFactory());
+//                msObject.setValue("sqlSource.boundSql.sql", authSql);
+////                invocation.getArgs()[0] = newStatement;
+//                log.debug("baseSql:{} authSql:{}", originSql, authSql);
+//
+//                MapperMethod.ParamMap paramMap = (MapperMethod.ParamMap) boundSql.getParameterObject();
             } catch (Exception e) {
                 log.error("数据权限拦截器异常", e);
                 throw e;
@@ -169,21 +152,27 @@ public class DataPermissionInterceptor implements Interceptor {
         //有别名用别名，无别名用表名，防止字段冲突报错
         String mainTableName = fromItem.getAlias() == null ? fromItem.getName() : fromItem.getAlias().getName();
 
+        List<Long> creatorIds = ShieldContextHolder.getCreatorIds();
+
+        log.info(creatorIds.toString());
+
         Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
+
+        String dataAuthSql = "";
+        //构建子查询
         if (oneself.getCode().equals(rolePermissionType)) {
-
+            dataAuthSql = mainTableName + ".created_by = " + ShieldContextHolder.getUserId();
         } else if (subordinate.getCode().equals(rolePermissionType)) {
-
+            dataAuthSql = mainTableName + ".created_by in (" + ShieldContextHolder.getCreatorIds() + ") ";
         } else if (selfDepartment.getCode().equals(rolePermissionType)) {
-
+            dataAuthSql = mainTableName + ".created_by in (" + ShieldContextHolder.getCreatorIds() + ") ";
         } else if (subDepartment.getCode().equals(rolePermissionType)) {
-
+            dataAuthSql = mainTableName + ".created_by in (" + ShieldContextHolder.getCreatorIds() + ") ";
         } else if (all.getCode().equals(rolePermissionType)) {
-
+            //do nothing
         }
 
         //构建子查询
-        String dataAuthSql = "";//mainTableName + ".id in ( select data_id from data_group_ref where " + mainTableName + ".id = data_id and data_type = " + dataAuth.type() + " and group_id in (" + groupStr + ")" + ")";
         if (plain.getWhere() == null) {
             plain.setWhere(CCJSqlParserUtil.parseCondExpression(dataAuthSql));
         } else {

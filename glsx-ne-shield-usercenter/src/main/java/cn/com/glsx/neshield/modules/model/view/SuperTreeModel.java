@@ -18,5 +18,6 @@ public class SuperTreeModel implements Serializable {
     private Integer order = 0;
     private boolean isRoot;
     private List<SuperTreeModel> children;
+    private boolean disabled;
 
 }

@@ -9,7 +9,6 @@ import cn.com.glsx.neshield.modules.model.param.MenuSearch;
 import cn.com.glsx.neshield.modules.model.param.UserSearch;
 import cn.com.glsx.neshield.modules.model.view.MenuDTO;
 import cn.com.glsx.neshield.modules.service.MenuService;
-import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.glsx.plat.common.annotation.SysLog;
 import com.glsx.plat.common.enums.OperateType;
@@ -23,7 +22,10 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author: taoyr
@@ -40,12 +42,6 @@ public class MenuController extends BaseController {
 
     @GetMapping("/search")
     public R search(MenuSearch search) {
-        //查子菜单数据不分页
-        if (Objects.isNull(search.getParentId())) {
-            PageHelper.startPage(search.getPageNumber(), search.getPageSize());
-        } else {
-            PageHelper.startPage(1, Short.MAX_VALUE);
-        }
         PageInfo<MenuDTO> pageInfo = menuService.search(search);
         return R.ok().putPageData(pageInfo);
     }

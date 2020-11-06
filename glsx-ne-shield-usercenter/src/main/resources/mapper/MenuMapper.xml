@@ -64,8 +64,8 @@
         <if test="name != null and name != ''">
             and menu_name LIKE CONCAT('%',#{name},'%')
         </if>
-        <if test="status != null">
-            and enable_status = #{status}
+        <if test="enableStatus != null">
+            and enable_status = #{enableStatus}
         </if>
         <choose>
             <when test="parentId !=null">
@@ -75,6 +75,7 @@
                 and type = 1
             </otherwise>
         </choose>
+        order by id desc
     </select>
 
     <select id="selectMenuFullTree" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
@@ -88,7 +89,7 @@
         select m.menu_no menuNo,m.parent_id parentId,m.menu_name menuName,m.order_num orderNum,
         m.type,m.front_route frontRoute,m.icon
         from t_menu m,t_role_menu rm
-        where m.id = rm.menu_id
+        where m.menu_no = rm.menu_id
         and m.del_flag = 0
         and rm.del_flag = 0
         and m.enable_status = 1

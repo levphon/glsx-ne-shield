@@ -217,18 +217,20 @@ public class OrganizationService {
             throw new UserCenterException(SystemMessage.FAILURE.getCode(), "该组织下仍关联有用户，请转移这部分用户后再重试");
         }
 
-        //删除所有部门
+        //删除包括自己和下级所有部门
         departmentMapper.logicDeleteByIdList(organizationIdList);
+
+        //删除自己下级所有路径
+        organizationMapper.logicDeleteAllSubOrganization(organizationId);
+
+        //删除自己对上级的所有路径
+        organizationMapper.logicDeleteSelfBySubId(organizationId);
 
         //删除租户
         if (Constants.IS_ROOT_DEPARTMENT == department.getIsRoot()) {
             Long tenantId = department.getTenantId();
             tenantMapper.logicDeleteById(tenantId);
         }
-
-        //删除所有路径
-        organizationMapper.logicDeleteAllSubOrganization(organizationId);
-
     }
 
     public DepartmentDTO organizationInfo(Long organizationId) {
@@ -236,7 +238,7 @@ public class OrganizationService {
         Department department = departmentMapper.selectById(organizationId);
         if (department != null) {
             departmentDTO = DepartmentConverter.INSTANCE.do2dto(department);
-            if (department.getIsRoot() == 0) {
+            if (department.getIsRoot() == Constants.IS_NOT_ROOT_DEPARTMENT) {
                 Organization superiorOrg = organizationMapper.selectSuperiorOrganization(department.getId());
                 if (superiorOrg != null) {
                     Department superiorDept = departmentMapper.selectById(superiorOrg.getSuperiorId());

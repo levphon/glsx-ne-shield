@@ -18,6 +18,8 @@ import cn.com.glsx.neshield.modules.model.param.MenuSearch;
 import cn.com.glsx.neshield.modules.model.param.MenuTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.UserSearch;
 import cn.com.glsx.neshield.modules.model.view.MenuDTO;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.glsx.plat.common.utils.TreeModelUtil;
 import com.glsx.plat.redis.utils.RedisUtils;
@@ -29,10 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static cn.com.glsx.admin.common.constant.RedisConstants.FIVE_SECONDS;
@@ -58,14 +57,24 @@ public class MenuService {
     private RedisUtils redisUtils;
 
     public PageInfo<MenuDTO> search(MenuSearch search) {
-        List<MenuDTO> list = menuMapper.selectList(search);
-        list.forEach(m -> {
+        Page page = null;
+        //查子菜单数据不分页
+        if (Objects.isNull(search.getParentId())) {
+            page = PageHelper.startPage(search.getPageNumber(), search.getPageSize());
+        } else {
+            page = PageHelper.startPage(1, Short.MAX_VALUE);
+        }
+        List<MenuDTO> menuDTOList = menuMapper.selectList(search);
+        menuDTOList.forEach(m -> {
             int cnt = menuMapper.selectChildrenCntByParentId(m.getMenuNo());
             m.setHasChildren(cnt > 0);
 
             setParentMenuInfo(m);
         });
-        return new PageInfo<>(list);
+        PageInfo<MenuDTO> pageInfo = new PageInfo<>(menuDTOList);
+        pageInfo.setPages(page.getPages());//总页数
+        pageInfo.setTotal(page.getTotal());//总条数
+        return pageInfo;
     }
 
     public List<MenuExport> export(UserSearch search) {
@@ -251,7 +260,7 @@ public class MenuService {
         //如果是超级管理员，创建菜单自动分配权限到超级管理员角色
         if (ShieldContextHolder.isSuperAdmin()) {
             RoleMenu roleMenu = new RoleMenu(true);
-            roleMenu.setMenuId(menu.getId());
+            roleMenu.setMenuNo(menuNo);
             roleMenu.setRoleId(ShieldContextHolder.getRoleId());
             roleMenuMapper.insert(roleMenu);
         }
@@ -272,7 +281,7 @@ public class MenuService {
 
     public void logicDeleteById(Long id) {
         Menu menu = menuMapper.selectById(id);
-        log.warn("{}删除菜单{}", ShieldContextHolder.getUsername(), menu.toString());
+        log.warn("{}删除菜单{}", ShieldContextHolder.getAccount(), menu.toString());
 //        menuMapper.logicDeleteById(id);
         menuMapper.deleteByPrimaryKey(id);
     }

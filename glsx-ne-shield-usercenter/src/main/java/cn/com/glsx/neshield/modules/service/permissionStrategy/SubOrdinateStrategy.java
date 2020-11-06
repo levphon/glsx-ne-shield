@@ -77,7 +77,7 @@ public class SubOrdinateStrategy extends PermissionStrategy {
         //本人
         User user = userMapper.selectById(userId);
         list.add(user);
-        log.info("用户{} {}用户数为{}", ShieldContextHolder.getUsername(), UserConstants.RolePermitCastType.subordinate.getValue(), list.size());
+        log.info("用户{} {}用户数为{}", ShieldContextHolder.getAccount(), UserConstants.RolePermitCastType.subordinate.getValue(), list.size());
         return list;
     }
 

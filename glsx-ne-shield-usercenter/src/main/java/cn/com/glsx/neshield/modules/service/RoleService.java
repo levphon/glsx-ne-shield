@@ -14,6 +14,7 @@ import cn.com.glsx.neshield.modules.model.param.RoleSearch;
 import cn.com.glsx.neshield.modules.model.view.RoleDTO;
 import cn.com.glsx.neshield.modules.model.view.SimpleRoleDTO;
 import cn.hutool.core.collection.CollectionUtil;
+import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.glsx.plat.exception.SystemMessage;
@@ -26,7 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,13 +53,16 @@ public class RoleService {
 
     public PageInfo<RoleDTO> search(RoleSearch search) {
 
-        PageHelper.startPage(search.getPageNumber(), search.getPageSize());
+        Page page = PageHelper.startPage(search.getPageNumber(), search.getPageSize());
 
         List<Role> list = roleMapper.selectList(search);
 
         List<RoleDTO> roleDTOList = getRoleListAssembled(list);
 
-        return new PageInfo<>(roleDTOList);
+        PageInfo<RoleDTO> pageInfo = new PageInfo<>(roleDTOList);
+        pageInfo.setPages(page.getPages());//总页数
+        pageInfo.setTotal(page.getTotal());//总条数
+        return pageInfo;
     }
 
     private List<RoleDTO> getRoleListAssembled(List<Role> list) {
@@ -127,7 +133,7 @@ public class RoleService {
 
         if (ShieldContextHolder.isSuperAdmin()) {
             //假设当前登陆的A账号（角色：系统管理员），则该账号创建账号的时候角色的选择范围可以覆盖系统所有角色
-            roleList = roleMapper.selectList(new RoleSearch());
+            roleList = roleMapper.selectList(new RoleSearch().setEnableStatus(EnableStatus.enable.getCode()));
         } else {
             //假设当前登陆的B账号（角色：租户B管理员），则该账号创建账号的时候角色的选择范围可以覆盖共享角色+对该租户开放的角色
             roleList = Lists.newLinkedList();
@@ -160,14 +166,18 @@ public class RoleService {
 
         role.setContextInfo(true);
 
-        role.setTenantId(ShieldContextHolder.getRoleId());
+        role.setTenantId(ShieldContextHolder.getTenantId());
 
         roleMapper.insertUseGeneratedKeys(role);
 
         List<Long> menuIdList = roleBO.getMenuIdList();
 
-        List<RoleMenu> roleMenuList = menuIdList.stream().map(menuId -> new RoleMenu(true).setMenuId(menuId)
-                .setRoleId(role.getId())).collect(Collectors.toList());
+        menuIdList = getFixMenuIds(menuIdList);
+
+        List<RoleMenu> roleMenuList = menuIdList.stream().map(menuNo -> new RoleMenu(true)
+                .setMenuNo(menuNo)
+                .setRoleId(role.getId()))
+                .collect(Collectors.toList());
 
         roleMenuMapper.insertList(roleMenuList);
     }
@@ -189,10 +199,36 @@ public class RoleService {
 
         List<Long> menuIdList = roleBO.getMenuIdList();
 
-        List<RoleMenu> roleMenuList = menuIdList.stream().map(menuId -> new RoleMenu(true).setMenuId(menuId)
+        menuIdList = getFixMenuIds(menuIdList);
+
+        List<RoleMenu> roleMenuList = menuIdList.stream().map(menuNo -> new RoleMenu(true)
+                .setMenuNo(menuNo)
                 .setRoleId(id)).collect(Collectors.toList());
 
         roleMenuMapper.insertList(roleMenuList);
+    }
+
+    /**
+     * 将缺失的夫级id补全
+     *
+     * @param menuIdList 页面传递的id集合
+     */
+    private List<Long> getFixMenuIds(List<Long> menuIdList) {
+        //把已有的子菜单id转为Set
+        HashSet<Long> parentids = new HashSet<>(menuIdList);
+
+        //Long转String,根据01判断一级父id,每多一级长度加2,截取下一级父id,添加set
+        menuIdList.stream().map(String::valueOf).forEach(menuId -> {
+                    int length = menuId.length();
+                    int rootIndex =  menuId.indexOf("01") +2;
+                    if(rootIndex != -1){
+                        for(int i = rootIndex;i< length;i+=2){
+                            String parentIdStr = menuId.substring(0,i);
+                            parentids.add(Long.parseLong(parentIdStr));
+                        }
+                    }
+                });
+        return new ArrayList<>(parentids);
     }
 
     /**
@@ -225,12 +261,10 @@ public class RoleService {
     }
 
     public void deleteRole(Long id) {
-        List<UserRoleRelation> userRoleRelations = userRoleRelationMapper.selectUserRoleRelationList(new UserRoleRelation().setRoleId(id));
-
-        if (CollectionUtils.isNotEmpty(userRoleRelations)) {
+        List<UserRoleRelation> relations = userRoleRelationMapper.selectUserRoleRelationList(new UserRoleRelation().setRoleId(id));
+        if (CollectionUtils.isNotEmpty(relations)) {
             throw new UserCenterException(SystemMessage.FAILURE.getCode(), "请取消相关账号与该角色的关联后再删除");
         }
-
         roleMapper.logicDeleteById(id);
     }
 }

@@ -70,12 +70,11 @@ public class LoginController {
         String text;
         if (captchaOpen) {
             text = producer.createText();
+
+            redisUtils.setex(Constants.KAPTCHA_SESSION_KEY + "_" + captchaSerialNumber, text, 60);
         } else {
             text = captchaText;
         }
-
-        String key = Constants.KAPTCHA_SESSION_KEY + "_" + captchaSerialNumber;
-        redisUtils.setex(key, text, 60);
 
         //生成图片验证码
         BufferedImage image = producer.createImage(text);

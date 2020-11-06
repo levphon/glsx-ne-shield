@@ -6,7 +6,6 @@ import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.loggin.modules.model.SysLogSearch;
 import com.alibaba.fastjson.JSONArray;
 import com.glsx.plat.core.web.R;
-import com.glsx.plat.loggin.LogginStrategyFactory;
 import com.glsx.plat.loggin.entity.SysLogEntity;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +21,6 @@ import java.util.*;
 
 @Service
 public class LogginService {
-
-    @Autowired
-    private LogginStrategyFactory logginStrategyFactory;
 
     @Autowired
     private AuthFeignClient authFeignClient;

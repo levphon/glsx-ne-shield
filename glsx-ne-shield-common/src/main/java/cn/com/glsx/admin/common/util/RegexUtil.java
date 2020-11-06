@@ -11,7 +11,7 @@ public class RegexUtil {
     //public static final String pwdRegex = "^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z]{6,18}$";
     public static final String pwdRegex = "^[0-9A-Za-z]{6,18}$";
 
-    public static final String mobileRegex = "^1(3|4|5|7|8)\\d{9}$";
+    public static final String mobileRegex = "^1(3|4|5|7|8|9)\\d{9}$";
 
     public static final String roleNameRegex = "^(?!_)(?!.*?_$)[a-zA-Z0-9_\\u4e00-\\u9fa5]+$";
 

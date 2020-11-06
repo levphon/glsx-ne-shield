@@ -79,6 +79,7 @@
         left join t_user tu on tor2.sub_id = tu.id
         left join t_tenant tt on tor2.tenant_id = tt.id
         where td.del_flag = 0
+        and td.enable_status = 1
         and tor.id = tor2.id
         and tt.id = tor.tenant_id
         <if test="tenantId != null">
@@ -225,7 +226,11 @@
         and sub_id = #{subId}
     </select>
 
+    <update id="logicDeleteSelfBySubId">
+        update t_organization set del_flag = -1 where sub_id = #{subId}
+    </update>
+
     <update id="logicDeleteAllSubOrganization">
-        update org from t_organization org join t_organization b on (org.sub_id = b.sub_id) where b.superior_id=#{organizationId};
+        update t_organization set del_flag = -1 where superior_id=#{organizationId}
     </update>
 </mapper>

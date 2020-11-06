@@ -45,6 +45,9 @@
         <if test="roleName != null and roleName != ''">
             and role_name like concat('%',#{roleName},'%')
         </if>
+        <if test="enableStatus != null">
+            and enable_status = #{enableStatus}
+        </if>
         order by id desc
     </select>
 
@@ -86,6 +89,7 @@
         <include refid="Base_Column_List"/>
         from t_role
         where del_flag = 0
+        and enable_status = 1
         and role_visibility = #{roleVisibility}
     </select>
 
@@ -94,6 +98,7 @@
         <include refid="Base_Column_List"/>
         from t_role
         where del_flag = 0
+        and enable_status = 1
         and tenant_id in
         <foreach collection="tenantIds" open="(" close=")" separator="," item="tenantId">
             #{tenantId}

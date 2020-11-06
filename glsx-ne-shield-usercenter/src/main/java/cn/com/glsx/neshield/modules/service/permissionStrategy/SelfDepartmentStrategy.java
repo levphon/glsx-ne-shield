@@ -49,7 +49,7 @@ public class SelfDepartmentStrategy extends PermissionStrategy {
     @Override
     public List<Department> permissionDepartments() {
         Department department = departmentMapper.selectById(ShieldContextHolder.getDepartmentId());
-        log.info("用户{} {}部门为{}", ShieldContextHolder.getUsername(), UserConstants.RolePermitCastType.selfDepartment.getValue(), department.getDepartmentName());
+        log.info("用户{} {}部门为{}", ShieldContextHolder.getAccount(), UserConstants.RolePermitCastType.selfDepartment.getValue(), department.getDepartmentName());
         return Lists.newArrayList(department);
     }
 

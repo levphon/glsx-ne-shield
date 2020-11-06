@@ -31,6 +31,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/login")
                 .excludePathPatterns("/captcha")
                 .excludePathPatterns("/actuator/**")
+                .excludePathPatterns("/auth/**")
                 .excludePathPatterns("/api/**");
 
         registry.addInterceptor(permissionInterceptor).addPathPatterns("/**");

@@ -9,7 +9,7 @@ import lombok.experimental.Accessors;
 public class MenuSearch extends Page {
 
     private String name;
-    private Integer status;
     private Long parentId;
+    private Integer enableStatus;
 
 }
