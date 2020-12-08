@@ -1,6 +1,7 @@
 package cn.com.glsx.neshield.modules.api;
 
 import cn.com.glsx.auth.api.AuthFeignClient;
+import cn.com.glsx.auth.model.MenuPermission;
 import cn.com.glsx.auth.model.SyntheticUser;
 import cn.com.glsx.neshield.modules.service.UserService;
 import com.glsx.plat.core.web.R;
@@ -43,10 +44,25 @@ public class AuthApiController implements AuthFeignClient {
     }
 
     @Override
-    @GetMapping("/getRelationAuthUserIds")
-    public R getRelationAuthUserIds() {
-        List<Long> userIdList = userService.getRelationAuthUserIds();
-        return R.ok().data(userIdList);
+    @GetMapping("/getAuthDeptIds")
+    public R getAuthDeptIds() {
+        SyntheticUser authUser = userService.getSyntheticUser();
+        return R.ok().data(authUser.getVisibleDeptIds());
+    }
+
+    @Override
+    @GetMapping("/getAuthUserIds")
+    public R getAuthUserIds() {
+        SyntheticUser authUser = userService.getSyntheticUser();
+        return R.ok().data(authUser.getVisibleCreatorIds());
+    }
+
+    @Override
+    @GetMapping("/getPermMenus")
+    public R getPermMenus() {
+        SyntheticUser authUser = userService.getSyntheticUser();
+        List<MenuPermission> list = userService.getPermissionMenus(authUser);
+        return R.ok().data(list);
     }
 
 }

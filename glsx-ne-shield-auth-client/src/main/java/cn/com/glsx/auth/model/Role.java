@@ -20,8 +20,6 @@ public class Role {
 
     private Integer roleVisibility;
 
-    private String roleTenants;
-
     private List<MenuPermission> menuPermissionList;
 
 }

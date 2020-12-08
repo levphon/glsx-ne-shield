@@ -20,7 +20,6 @@ public interface RoleConverter {
             @Mapping(source = "remark", target = "remark"),
             @Mapping(source = "rolePermissionType", target = "rolePermissionType"),
             @Mapping(source = "roleVisibility", target = "roleVisibility"),
-            @Mapping(source = "roleTenants", target = "roleTenants"),
             @Mapping(source = "enableStatus", target = "enableStatus"),
     })
     Role bo2do(RoleBO roleBO);

@@ -1,12 +1,16 @@
 package cn.com.glsx.auth.utils;
 
-import cn.com.glsx.auth.model.*;
+import cn.com.glsx.auth.model.Department;
+import cn.com.glsx.auth.model.Role;
+import cn.com.glsx.auth.model.SyntheticUser;
+import cn.com.glsx.auth.model.Tenant;
 import lombok.NoArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -15,7 +19,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class ShieldContextHolder {
 
-    private static final Long adminRoleId = 1L;
+    private static final Long ADMIN_ROLE_ID = 1L;
 
     private static final ThreadLocal<SyntheticUser> USER_THREAD_LOCAL = new ThreadLocal<>();
 
@@ -42,7 +46,7 @@ public class ShieldContextHolder {
 
     public static boolean isRoleAdmin() {
         Long roleId = getRoleId();
-        return adminRoleId.equals(roleId);
+        return ADMIN_ROLE_ID.equals(roleId);
     }
 
     public static Long getUserId() {
@@ -85,30 +89,35 @@ public class ShieldContextHolder {
     public static List<Long> getRoleIds() {
         SyntheticUser user = getUser();
         if (user != null) {
-            if (CollectionUtils.isNotEmpty(user.getRoleList())) {
-                return user.getRoleList().stream().map(Role::getRoleId).collect(Collectors.toList());
+            if (CollectionUtils.isNotEmpty(user.getRoles())) {
+                return user.getRoles().stream().map(Role::getRoleId).collect(Collectors.toList());
             }
         }
         return new ArrayList<>();
     }
 
     /**
-     * 获取当前用户角色可见的创建人id
+     * 获取当前用户角色数据权限可见的部门id
      *
      * @return
      */
-    public static List<Long> getCreatorIds() {
+    public static Set<Long> getVisibleDeptIds() {
         SyntheticUser user = getUser();
-        return user.getOwnerIdList();
+        return user.getVisibleDeptIds();
     }
 
-    public static List<MenuPermission> getUserMenuPermissions() {
+    /**
+     * 获取当前用户角色数据权限可见的创建人id
+     *
+     * @return
+     */
+    public static Set<Long> getVisibleCreatorIds() {
         SyntheticUser user = getUser();
-        return user.getMenuPermissionList();
+        return user.getVisibleCreatorIds();
     }
 
     public static Role getRole() {
-        Role role = getUser().getRoleList().get(0);
+        Role role = getUser().getRoles().get(0);
         Assert.notNull(role, "获取当前用户角色信息失败");
         return role;
     }

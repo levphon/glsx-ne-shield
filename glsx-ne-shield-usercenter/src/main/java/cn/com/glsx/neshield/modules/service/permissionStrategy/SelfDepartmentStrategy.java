@@ -125,7 +125,7 @@ public class SelfDepartmentStrategy extends PermissionStrategy {
             otm.setUserNumber(number == null ? 0 : number);
         });
 
-        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByDepth(orgTreeModelList, 0);
+        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByRootMark(orgTreeModelList, 1);
 
         return orgTree;
     }

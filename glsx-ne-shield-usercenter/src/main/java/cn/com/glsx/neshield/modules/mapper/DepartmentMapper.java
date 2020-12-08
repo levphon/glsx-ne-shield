@@ -1,6 +1,7 @@
 package cn.com.glsx.neshield.modules.mapper;
 
 import cn.com.glsx.neshield.modules.entity.Department;
+import cn.com.glsx.neshield.modules.model.param.DepartmentSearch;
 import com.glsx.plat.mybatis.mapper.CommonBaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -10,7 +11,7 @@ import java.util.List;
 @Mapper
 public interface DepartmentMapper extends CommonBaseMapper<Department> {
 
-    List<Department> selectDepartmentList(Department department);
+    List<Department> search(DepartmentSearch search);
 
     List<Department> selectByIds(@Param("ids") List<Long> ids);
 

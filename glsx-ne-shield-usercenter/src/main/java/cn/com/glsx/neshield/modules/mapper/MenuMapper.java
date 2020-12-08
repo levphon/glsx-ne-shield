@@ -18,7 +18,7 @@ public interface MenuMapper extends CommonBaseMapper<Menu> {
 
     Menu selectByMenuNo(@Param("menuNo") Long menuNo);
 
-    List<MenuDTO> selectList(MenuSearch search);
+    List<MenuDTO> selectDTOList(MenuSearch search);
 
     /**
      * 根据条件获得菜单树-全部菜单
@@ -35,6 +35,13 @@ public interface MenuMapper extends CommonBaseMapper<Menu> {
      */
     List<MenuModel> selectMenuPermTree(MenuTreeSearch search);
 
+    /**
+     * 获取角色菜单树
+     *
+     * @param parentNo
+     * @param roleIds
+     * @return
+     */
     List<MenuModel> selectMenuTreeByParentId(@Param("parentNo") Long parentNo, List<Long> roleIds);
 
     /**
@@ -43,14 +50,15 @@ public interface MenuMapper extends CommonBaseMapper<Menu> {
      * @param roleIds
      * @return
      */
-    List<Menu> selectMenuList(@Param("roleIds") List<Long> roleIds);
+    List<Menu> selectList(@Param("roleIds") List<Long> roleIds);
 
     /**
      * 根据父菜单id获得子菜单列表
      *
+     * @param parentNo
      * @return
      */
-    List<Menu> selectMenuListByParentId(@Param("parentNo") Long parentNo);
+    List<Menu> selectByParentId(@Param("parentNo") Long parentNo);
 
     /**
      * 根据父菜单no获得子菜单列表
@@ -58,7 +66,7 @@ public interface MenuMapper extends CommonBaseMapper<Menu> {
      * @param parentNo
      * @return
      */
-    List<Menu> selectMenuListByLikeParentNo(@Param("parentNo") Long parentNo);
+    List<Menu> selectByLikeParentNo(@Param("parentNo") Long parentNo);
 
     /**
      * 获取子菜单数量

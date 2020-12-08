@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public interface AuthFeignClient {
 
     /**
-     * 判断用户是否登录并token续期
+     * 判断用户是否登录
      *
      * @return
      */
@@ -28,11 +28,27 @@ public interface AuthFeignClient {
     R getAuthUser();
 
     /**
-     * 获取当前登录用户对应能够查看到的相关用户数据的用户id
+     * 获取当前登录用户角色数据权限内的部门id
      *
      * @return
      */
-    @GetMapping(value = "/getRelationAuthUserIds", consumes = MediaType.APPLICATION_JSON_UTF8_VALUE, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    R getRelationAuthUserIds();
+    @GetMapping(value = "/getAuthDeptIds", consumes = MediaType.APPLICATION_JSON_UTF8_VALUE, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    R getAuthDeptIds();
+
+    /**
+     * 获取当前登录用户角色数据权限内的用户id
+     *
+     * @return
+     */
+    @GetMapping(value = "/getAuthUserIds", consumes = MediaType.APPLICATION_JSON_UTF8_VALUE, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    R getAuthUserIds();
+
+    /**
+     * 获取当前登录用户角色授权的功能菜单
+     *
+     * @return
+     */
+    @GetMapping(value = "/getPermMenus", consumes = MediaType.APPLICATION_JSON_UTF8_VALUE, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    R getPermMenus();
 
 }

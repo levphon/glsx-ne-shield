@@ -116,7 +116,7 @@ public class OneselfStrategy extends PermissionStrategy {
             otm.setUserNumber(1);
         });
 
-        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByDepth(orgTreeModelList, 0);
+        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByRootMark(orgTreeModelList, 1);
 
         return orgTree;
     }

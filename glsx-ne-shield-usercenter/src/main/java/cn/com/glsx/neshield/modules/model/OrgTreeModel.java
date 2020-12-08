@@ -35,6 +35,11 @@ public class OrgTreeModel implements TreeModel<OrgModel> {
     }
 
     @Override
+    public Integer isRoot() {
+        return org.getIsRoot();
+    }
+
+    @Override
     public Integer getDepth() {
         return org.getDepth();
     }

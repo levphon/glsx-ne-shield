@@ -1,14 +1,20 @@
 package cn.com.glsx.neshield.common.exception;
 
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.glsx.plat.core.web.R;
-import com.glsx.plat.exception.BusinessException;
 import com.glsx.plat.exception.ExceptionLevel;
 import com.glsx.plat.exception.GlobalExceptionHandler;
 import com.glsx.plat.exception.SystemMessage;
+import com.glsx.plat.loggin.LogginConstants;
+import com.glsx.plat.loggin.LogginStrategyFactory;
 import feign.FeignException;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.binding.BindingException;
 import org.mybatis.spring.MyBatisSystemException;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -23,9 +29,12 @@ import javax.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class UserCenterExceptionHandler extends GlobalExceptionHandler {
 
+    @Autowired
+    private LogginStrategyFactory logginStrategyFactory;
+
     @ExceptionHandler(UserCenterException.class)
     public R handleAdminException(UserCenterException e) {
-        saveException(e, ExceptionLevel.fatal);
+        this.saveException(e, ExceptionLevel.fatal);
         return R.error(e.getErrorCode(), e.getMessage());
     }
 
@@ -37,7 +46,7 @@ public class UserCenterExceptionHandler extends GlobalExceptionHandler {
      */
     @ExceptionHandler(FeignException.class)
     public R handleFeignException(FeignException e) {
-        saveException(e, ExceptionLevel.fatal);
+        this.saveException(e, ExceptionLevel.fatal);
         return R.error(e.status(), e.getMessage());
     }
 
@@ -49,24 +58,33 @@ public class UserCenterExceptionHandler extends GlobalExceptionHandler {
      */
     @ExceptionHandler(BindingException.class)
     public R handleBindingException(BindingException e) {
-        saveException(e, ExceptionLevel.fatal);
+        this.saveException(e, ExceptionLevel.fatal);
         return R.error(e.getMessage());
     }
 
     @ExceptionHandler(value = MyBatisSystemException.class)
     public R myBatisSystemException(MyBatisSystemException e, HttpServletRequest request) {
-        Throwable cause = e.getCause();
-        if (cause instanceof BusinessException) {
-            return businessExceptionHandler(request, e);
-        }
         log.error("数据存储出错", e);
-        saveException(e, ExceptionLevel.fatal);
+        this.saveException(e, ExceptionLevel.fatal);
         return SystemMessage.DATA_HANDLE_ERROR.result();
     }
 
+    @ExceptionHandler(value = UnrecognizedPropertyException.class)
+    public R unrecognizedPropertyException(UnrecognizedPropertyException e) {
+        log.error("不能识别的字段", e);
+        this.saveException(e, ExceptionLevel.fatal);
+        return SystemMessage.ARGS_ERROR.result();
+    }
+
+    @SneakyThrows
+    @Async
     @Override
     protected void saveException(Exception e, ExceptionLevel level) {
         // TODO: 2020/10/14 异常入库,对此方法进行aop处理
+        String logId = MDC.get(LogginConstants.MDC_LOG_DB_ID);
+        log.error("操作异常/失败ID:{}", MDC.get(LogginConstants.MDC_LOG_DB_ID));
+        logginStrategyFactory.getStrategy().updateLogStatus(logId, "失败");
+        MDC.clear();
     }
 
 }

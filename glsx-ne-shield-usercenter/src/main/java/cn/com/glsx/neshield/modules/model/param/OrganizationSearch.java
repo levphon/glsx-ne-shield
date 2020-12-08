@@ -4,6 +4,8 @@ import cn.hutool.db.Page;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.util.Collection;
+
 /**
  * @author taoyr
  */
@@ -22,5 +24,9 @@ public class OrganizationSearch extends Page {
     private boolean hasChild;
 
     private boolean hasUserNumber;
+
+    private Long tenantId;
+
+    private Collection<Long> orgIds;
 
 }

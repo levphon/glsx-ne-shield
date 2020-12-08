@@ -59,15 +59,15 @@ public class Role extends BaseEntity {
     /**
      * 角色租户范围，逗号分割
      */
-    @Column(name = "role_tenants")
-    private String roleTenants;
+//    @Column(name = "role_tenants")
+//    private String roleTenants;
 
     @Column(name = "enable_status")
     private Integer enableStatus;
 
-    public void setContextInfo(boolean isAdd){
+    public void setContextInfo(boolean isAdd) {
         Date date = new Date();
-        if (isAdd){
+        if (isAdd) {
             setCreatedBy(ShieldContextHolder.getUserId());
             setCreatedDate(date);
         }

@@ -67,16 +67,4 @@ public abstract class PermissionStrategy {
         return superiorIds;
     }
 
-    public Set<Long> getSuperiorIds(Long deptId, Map<Long, String> idsStrMap) {
-        String idsStr = idsStrMap.get(deptId);
-        Set<Long> superiorIds = Sets.newHashSet();
-        if (StringUtils.isNotEmpty(idsStr)) {
-            String[] ids = idsStr.split(",");
-            for (String id : ids) {
-                superiorIds.add(Long.valueOf(id));
-            }
-        }
-        return superiorIds;
-    }
-
 }

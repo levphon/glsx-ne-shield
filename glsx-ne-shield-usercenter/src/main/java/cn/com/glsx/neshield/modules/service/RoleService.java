@@ -5,9 +5,11 @@ import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.converter.RoleConverter;
 import cn.com.glsx.neshield.modules.entity.Role;
 import cn.com.glsx.neshield.modules.entity.RoleMenu;
+import cn.com.glsx.neshield.modules.entity.RoleTenant;
 import cn.com.glsx.neshield.modules.entity.UserRoleRelation;
 import cn.com.glsx.neshield.modules.mapper.RoleMapper;
 import cn.com.glsx.neshield.modules.mapper.RoleMenuMapper;
+import cn.com.glsx.neshield.modules.mapper.RoleTenantMapper;
 import cn.com.glsx.neshield.modules.mapper.UserRoleRelationMapper;
 import cn.com.glsx.neshield.modules.model.param.RoleBO;
 import cn.com.glsx.neshield.modules.model.param.RoleSearch;
@@ -17,10 +19,10 @@ import cn.hutool.core.collection.CollectionUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.exception.SystemMessage;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -51,11 +53,26 @@ public class RoleService {
     @Resource
     private RoleMenuMapper roleMenuMapper;
 
+    @Resource
+    private RoleTenantMapper roleTenantMapper;
+
     public PageInfo<RoleDTO> search(RoleSearch search) {
 
-        Page page = PageHelper.startPage(search.getPageNumber(), search.getPageSize());
+        List<Role> list = Lists.newArrayList();
 
-        List<Role> list = roleMapper.selectList(search);
+        Integer roleVisibility = ShieldContextHolder.getRoleVisibility();
+
+        Page page = PageHelper.startPage(search.getPageNumber(), search.getPageSize());
+        if (onlyAdmin.getCode().equals(roleVisibility)) {
+            //全部
+            list = roleMapper.selectList(search);
+        } else if (share.getCode().equals(roleVisibility)) {
+            //共享
+            list = roleMapper.selectList(search.setRoleVisibility(roleVisibility));
+        } else if (specifyTenants.getCode().equals(roleVisibility)) {
+            //指定租户+共享
+            list = roleMapper.selectVisibilityList(search.setTenantId(ShieldContextHolder.getTenantId()));
+        }
 
         List<RoleDTO> roleDTOList = getRoleListAssembled(list);
 
@@ -66,17 +83,6 @@ public class RoleService {
     }
 
     private List<RoleDTO> getRoleListAssembled(List<Role> list) {
-
-//        List<Long> departmentIdList = Lists.newArrayList();
-//
-//        list.forEach(role -> {
-//            if (StringUtils.isNotEmpty(role.getRoleTenants())) {
-//                String[] roleTenantsStr = role.getRoleTenants().split(",");
-//                Long[] roleTenantIds = (Long[]) ConvertUtils.convert(roleTenantsStr, Long.class);
-//                Collections.addAll(departmentIdList, roleTenantIds);
-//            }
-//        });
-
         List<RoleDTO> roleDtoList = list.stream().map(role -> {
             RoleDTO roleDTO = new RoleDTO();
             BeanUtils.copyProperties(role, roleDTO);
@@ -106,20 +112,6 @@ public class RoleService {
         return roleMapper.selectById(roleId);
     }
 
-    public int modifyRole(Role role) {
-        try {
-            if (role.getId() == null) {
-                roleMapper.insert(role);
-            } else {
-                roleMapper.updateByPrimaryKeySelective(role);
-            }
-        } catch (Exception e) {
-            log.error("编辑角色异常", e);
-            throw e;
-        }
-        return 1;
-    }
-
     /**
      * 根据角色权限范围获取角色列表
      *
@@ -144,11 +136,13 @@ public class RoleService {
             } else if (share.getCode().equals(roleVisibility)) {
                 roleList = roleMapper.selectByVisibilityType(roleVisibility);
             } else if (specifyTenants.getCode().equals(roleVisibility)) {
-                String roleTenantsStr = ShieldContextHolder.getRole().getRoleTenants();
+                List<Role> shareRoleList = roleMapper.selectByVisibilityType(share.getCode());
 
-                Long[] roleTenantIds = (Long[]) ConvertUtils.convert(roleTenantsStr, Long.class);
+                List<Long> roleTenantIdList = roleTenantMapper.selectTenantIdsByRoleId(ShieldContextHolder.getRoleId());
 
-                roleList = roleMapper.selectByTenantIds(Arrays.asList(roleTenantIds));
+                roleList = roleMapper.selectByTenantIds(roleTenantIdList);
+
+                roleList.addAll(shareRoleList);
             }
         }
 
@@ -178,8 +172,16 @@ public class RoleService {
                 .setMenuNo(menuNo)
                 .setRoleId(role.getId()))
                 .collect(Collectors.toList());
-
         roleMenuMapper.insertList(roleMenuList);
+
+        if (specifyTenants.getCode().equals(roleBO.getRoleVisibility())) {
+            String[] tenantIds = roleBO.getRoleTenants().split(",");
+            List<RoleTenant> roleTenantList = new ArrayList<>(tenantIds.length);
+            Arrays.asList(tenantIds).forEach(item -> {
+                roleTenantList.add(new RoleTenant().setRoleId(role.getId()).setTenantId(Long.valueOf(item)));
+            });
+            roleTenantMapper.insertList(roleTenantList);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -206,6 +208,16 @@ public class RoleService {
                 .setRoleId(id)).collect(Collectors.toList());
 
         roleMenuMapper.insertList(roleMenuList);
+
+        roleTenantMapper.logicDeleteByRoleId(role.getId());
+        if (specifyTenants.getCode().equals(roleBO.getRoleVisibility())) {
+            String[] tenantIds = roleBO.getRoleTenants().split(",");
+            List<RoleTenant> roleTenantList = new ArrayList<>(tenantIds.length);
+            Arrays.asList(tenantIds).forEach(item -> {
+                roleTenantList.add(new RoleTenant().setRoleId(role.getId()).setTenantId(Long.valueOf(item)));
+            });
+            roleTenantMapper.insertList(roleTenantList);
+        }
     }
 
     /**
@@ -219,15 +231,15 @@ public class RoleService {
 
         //Long转String,根据01判断一级父id,每多一级长度加2,截取下一级父id,添加set
         menuIdList.stream().map(String::valueOf).forEach(menuId -> {
-                    int length = menuId.length();
-                    int rootIndex =  menuId.indexOf("01") +2;
-                    if(rootIndex != -1){
-                        for(int i = rootIndex;i< length;i+=2){
-                            String parentIdStr = menuId.substring(0,i);
-                            parentids.add(Long.parseLong(parentIdStr));
-                        }
-                    }
-                });
+            int length = menuId.length();
+            int rootIndex = menuId.indexOf("01") + 2;
+            if (rootIndex != -1) {
+                for (int i = rootIndex; i < length; i += 2) {
+                    String parentIdStr = menuId.substring(0, i);
+                    parentids.add(Long.parseLong(parentIdStr));
+                }
+            }
+        });
         return new ArrayList<>(parentids);
     }
 
@@ -248,6 +260,10 @@ public class RoleService {
                 throw new UserCenterException(SystemMessage.FAILURE.getCode(), "相同角色已存在");
             }
         }
+        
+        if (!ShieldContextHolder.isSuperAdmin() && onlyAdmin.getCode().equals(roleBO.getRoleVisibility())) {
+            throw new UserCenterException(SystemMessage.FAILURE.getCode(), "非管理员账号不能创建管理员角色");
+        }
     }
 
     public RoleDTO roleInfo(Long id) {
@@ -256,6 +272,12 @@ public class RoleService {
         if (role != null) {
             roleDTO = new RoleDTO();
             BeanUtils.copyProperties(role, roleDTO);
+
+            if (specifyTenants.getCode().equals(role.getRoleVisibility())) {
+                List<Long> roleTenantIdList = roleTenantMapper.selectTenantIdsByRoleId(id);
+                String roleTenants = StringUtils.join(roleTenantIdList, ',');
+                roleDTO.setRoleTenants(roleTenants);
+            }
         }
         return roleDTO;
     }

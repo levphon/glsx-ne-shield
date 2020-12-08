@@ -1,13 +1,17 @@
 package cn.com.glsx.auth.interceptor;
 
+import cn.com.glsx.auth.api.AuthFeignClient;
+import cn.com.glsx.auth.model.FunctionPermissions;
 import cn.com.glsx.auth.model.MenuPermission;
-import cn.com.glsx.auth.model.RequireFunctionPermissions;
 import cn.com.glsx.auth.model.SyntheticUser;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.glsx.plat.core.web.R;
 import com.glsx.plat.exception.SystemMessage;
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -16,6 +20,7 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,10 +33,13 @@ import java.util.stream.Collectors;
 @Component
 public class WebFunctionPermissionInterceptor implements HandlerInterceptor {
 
+    @Autowired
+    private AuthFeignClient authFeignClient;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (handler instanceof HandlerMethod) {
-            RequireFunctionPermissions permissionRequired = ((HandlerMethod) handler).getMethodAnnotation(RequireFunctionPermissions.class);
+            FunctionPermissions permissionRequired = ((HandlerMethod) handler).getMethodAnnotation(FunctionPermissions.class);
             if (permissionRequired == null) {
                 return true;
             }
@@ -44,8 +52,17 @@ public class WebFunctionPermissionInterceptor implements HandlerInterceptor {
             String uri = request.getRequestURI();
             log.info("RequestURI:" + uri);
 
-            List<MenuPermission> menuPermissionList = ShieldContextHolder.getUserMenuPermissions();
+            List<MenuPermission> menuPermissionList = Lists.newArrayList();
 
+            R r = authFeignClient.getPermMenus();
+            if (r.isSuccess()) {
+                Object obj = r.getData();
+                if (obj instanceof JSONArray) {
+                    menuPermissionList = JSON.parseArray(((JSONArray) obj).toJSONString(), MenuPermission.class);
+                } else if (obj instanceof ArrayList) {
+                    menuPermissionList = (List<MenuPermission>) obj;
+                }
+            }
             boolean isPermit = menuPermissionList.stream().map(MenuPermission::getInterfaceUrl).collect(Collectors.toList()).contains(uri);
             if (!isPermit) {
                 needPermission(response);

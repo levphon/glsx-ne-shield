@@ -9,6 +9,7 @@ import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.OrgSuperiorModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
+import cn.com.glsx.neshield.modules.model.param.DepartmentSearch;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
@@ -16,7 +17,9 @@ import cn.com.glsx.neshield.modules.service.DepartmentService;
 import com.glsx.plat.common.model.TreeModel;
 import com.glsx.plat.common.utils.StringUtils;
 import com.glsx.plat.common.utils.TreeModelUtil;
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -64,7 +67,7 @@ public class AllStrategy extends PermissionStrategy {
     public List<DepartmentDTO> orgSimpleList(Long rootId) {
         List<Department> departmentParamList;
         if (rootId == null) {
-            departmentParamList = departmentMapper.selectDepartmentList(new Department().setIsRoot(Constants.IS_ROOT_DEPARTMENT));
+            departmentParamList = departmentMapper.search(new DepartmentSearch().setIsRoot(Constants.IS_ROOT_DEPARTMENT));
         } else {
             departmentParamList = organizationMapper.selectChildrenList(new OrganizationSearch().setRootId(rootId));
         }
@@ -85,8 +88,12 @@ public class AllStrategy extends PermissionStrategy {
     public List<? extends TreeModel> orgTree(OrgTreeSearch search) {
         if (StringUtils.isNotEmpty(search.getOrgName())) {
             List<OrgSuperiorModel> superiorModelList = organizationMapper.selectSuperiorIdsByOrg(search);
-            Set<Long> ids = getSuperiorIds(superiorModelList);
-            search.setOrgIds(ids);
+            if (CollectionUtils.isEmpty(superiorModelList)) {
+                return Lists.newArrayList();
+            }
+
+            Set<Long> superiorIds = getSuperiorIds(superiorModelList);
+            search.setOrgIds(superiorIds);
         }
 
         List<OrgModel> modelList = organizationMapper.selectOrgList(search);
@@ -102,7 +109,7 @@ public class AllStrategy extends PermissionStrategy {
             otm.setUserNumber(number == null ? 0 : number);
         });
 
-        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByDepth(orgTreeModelList, 0);
+        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByRootMark(orgTreeModelList, 1);
 
         return orgTree;
     }

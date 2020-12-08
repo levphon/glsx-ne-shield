@@ -3,6 +3,7 @@ package cn.com.glsx.auth.model;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 public class SyntheticUser {
@@ -16,6 +17,9 @@ public class SyntheticUser {
 
     private boolean isAdmin;
 
+    /**
+     * 用户组
+     */
 //    private UserGroup userGroup;
 
     /**
@@ -29,18 +33,18 @@ public class SyntheticUser {
     private Department department;
 
     /**
-     * 数据拥有者id
-     */
-    private List<Long> ownerIdList;
-
-    /**
      * 用户角色
      */
-    private List<Role> roleList;
+    private List<Role> roles;
 
     /**
-     * 用户菜单权限
+     * 数据创建人部门id
      */
-    private List<MenuPermission> menuPermissionList;
+    private Set<Long> visibleDeptIds;
+
+    /**
+     * 数据创建人id
+     */
+    private Set<Long> visibleCreatorIds;
 
 }

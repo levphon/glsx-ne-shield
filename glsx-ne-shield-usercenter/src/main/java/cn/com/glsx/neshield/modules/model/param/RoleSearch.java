@@ -15,4 +15,8 @@ public class RoleSearch extends Page {
 
     private Integer enableStatus;
 
+    private Long tenantId;
+
+    private Integer roleVisibility;
+
 }

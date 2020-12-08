@@ -56,7 +56,7 @@
         update t_menu set del_flag = -1 where id = #{id}
     </update>
 
-    <select id="selectList" resultMap="DTOResultMap">
+    <select id="selectDTOList" resultMap="DTOResultMap">
         select
         <include refid="Base_Column_List"/>
         from t_menu
@@ -75,7 +75,7 @@
                 and type = 1
             </otherwise>
         </choose>
-        order by id desc
+        order by order_num
     </select>
 
     <select id="selectMenuFullTree" resultType="cn.com.glsx.neshield.modules.model.MenuModel">
@@ -129,7 +129,7 @@
         and m.parent_id = #{parentNo}
     </select>
 
-    <select id="selectMenuList" resultMap="BaseResultMap">
+    <select id="selectList" resultMap="BaseResultMap">
         select
         m.id,
         m.menu_no,
@@ -159,20 +159,22 @@
         </if>
     </select>
 
-    <select id="selectMenuListByParentId" resultMap="BaseResultMap">
+    <select id="selectByParentId" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
         from t_menu
         where parent_id = #{parentNo}
         and del_flag = 0
+        order by order_num
     </select>
 
-    <select id="selectMenuListByLikeParentNo" resultMap="BaseResultMap">
+    <select id="selectByLikeParentNo" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
         from t_menu
         where menu_no like #{parentNo}
         and del_flag = 0
+        order by order_num
     </select>
 
     <select id="selectChildrenCntByParentId" resultType="java.lang.Integer">

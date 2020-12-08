@@ -17,6 +17,8 @@ public interface UserMapper extends CommonBaseMapper<User> {
 
     List<User> selectByDepartmentId(@Param("departmentId") Long departmentId);
 
+    List<User> selectExcludeUserIdByDepartmentId(@Param("departmentId") Long departmentId, @Param("userId") Long userId);
+
     User selectByAccount(@Param("account") String username);
 
     int selectCntByAccount(@Param("account") String username);

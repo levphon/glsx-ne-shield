@@ -20,7 +20,7 @@ public class BaseCity implements Serializable {
 
     private String name;
 
-    @Column(name = "province_code")
+    @Column(name = "prov_code")
     private String provCode;
 
 }

@@ -10,7 +10,7 @@
         <result column="remark" jdbcType="VARCHAR" property="remark"/>
         <result column="tenant_id" jdbcType="INTEGER" property="tenantId"/>
         <result column="role_visibility" jdbcType="INTEGER" property="roleVisibility"/>
-        <result column="role_tenants" jdbcType="VARCHAR" property="roleTenants"/>
+        <!--        <result column="role_tenants" jdbcType="VARCHAR" property="roleTenants"/>-->
         <result column="enable_status" jdbcType="TINYINT" property="enableStatus"/>
         <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
         <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
@@ -20,7 +20,7 @@
     </resultMap>
     <sql id="Base_Column_List">
         id, role_name, role_permission_type, max_user, repel_roles,
-        remark, tenant_id, role_visibility, role_tenants, enable_status, del_flag, created_date, created_by,
+        remark, tenant_id, role_visibility, enable_status, del_flag, created_date, created_by,
         updated_date, updated_by
     </sql>
 
@@ -42,6 +42,35 @@
         <include refid="Base_Column_List"/>
         from t_role
         where del_flag = 0
+        <if test="roleName != null and roleName != ''">
+            and role_name like concat('%',#{roleName},'%')
+        </if>
+        <if test="enableStatus != null">
+            and enable_status = #{enableStatus}
+        </if>
+        <if test="roleVisibility != null">
+            and role_visibility = #{roleVisibility}
+        </if>
+        order by id desc
+    </select>
+
+    <select id="selectVisibilityList" resultMap="BaseResultMap"
+            parameterType="cn.com.glsx.neshield.modules.model.param.RoleSearch">
+        select * from (
+        select tr1.*
+        from t_role tr1
+        where tr1.del_flag = 0
+        and tr1.role_visibility = 0
+        union
+        select tr.*
+        from t_role tr,
+        t_role_tenant trt
+        where tr.del_flag = 0
+        and trt.del_flag = 0
+        and tr.role_visibility = 2
+        and tr.id = trt.role_id
+        and trt.tenant_id = #{tenantId}
+        ) tall where 1=1
         <if test="roleName != null and roleName != ''">
             and role_name like concat('%',#{roleName},'%')
         </if>
@@ -93,15 +122,25 @@
         and role_visibility = #{roleVisibility}
     </select>
 
-    <select id="selectByTenantIds" resultMap="BaseResultMap">
-        select
-        <include refid="Base_Column_List"/>
+    <select id="selectRoleIdsByVisibilityType" resultMap="BaseResultMap">
+        select id
         from t_role
         where del_flag = 0
         and enable_status = 1
-        and tenant_id in
+        and role_visibility = #{roleVisibility}
+    </select>
+
+    <select id="selectByTenantIds" resultMap="BaseResultMap">
+        select tr.*
+        from t_role tr,t_role_tenant trt
+        where tr.del_flag = 0
+        and trt.del_flag = 0
+        and tr.enable_status = 1
+        and tr.id = trt.role_id
+        and trt.tenant_id in
         <foreach collection="tenantIds" open="(" close=")" separator="," item="tenantId">
             #{tenantId}
         </foreach>
+        order by tr.id
     </select>
 </mapper>

@@ -8,19 +8,19 @@
         <id column="id" jdbcType="BIGINT" property="id"/>
         <result column="code" jdbcType="VARCHAR" property="code"/>
         <result column="name" jdbcType="VARCHAR" property="name"/>
-        <result column="province_code" jdbcType="VARCHAR" property="provCode"/>
+        <result column="prov_code" jdbcType="VARCHAR" property="provCode"/>
     </resultMap>
     <sql id="Base_Column_List">
         <!--
           WARNING - @mbg.generated
         -->
-        id, code, `name`, province_code
+        id, code, `name`, prov_code
     </sql>
     <select id="selectByProvCode" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
         from base_cities
-        where province_code =#{provCode}
+        where prov_code =#{provCode}
         order by code
     </select>
 

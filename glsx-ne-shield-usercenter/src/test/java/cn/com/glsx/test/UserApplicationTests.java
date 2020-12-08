@@ -1,8 +1,7 @@
 package cn.com.glsx.test;
 
 import cn.com.glsx.Application;
-import cn.com.glsx.auth.utils.ShieldContextHolder;
-import cn.com.glsx.neshield.modules.entity.Department;
+import cn.com.glsx.neshield.modules.entity.Menu;
 import cn.com.glsx.neshield.modules.entity.Role;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.UserBO;
@@ -13,6 +12,7 @@ import cn.com.glsx.neshield.modules.service.UserService;
 import cn.com.glsx.neshield.modules.service.permissionStrategy.PermissionStrategy;
 import com.alibaba.fastjson.JSON;
 import com.glsx.plat.common.utils.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.shiro.authc.SimpleAuthenticationInfo;
 import org.apache.shiro.authc.UsernamePasswordToken;
 import org.apache.shiro.authc.credential.HashedCredentialsMatcher;
@@ -28,9 +28,9 @@ import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.getBeanNameByCode;
-
+@Slf4j
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = Application.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class UserApplicationTests {
@@ -56,16 +56,13 @@ public class UserApplicationTests {
     @Test
     public void testOrg() {
         OrgTreeSearch search = new OrgTreeSearch();
-        search.setOrgName("部");
+//        search.setOrgName("部");
 
 //        List<Long> superiorIds = organizationService.getSuperiorIdsByName(search.getOrgName());
 //        search.setOrgIds(superiorIds);
 
         List list1 = organizationService.fullOrgTree(search);
         System.out.println(JSON.toJSONString(list1));
-
-        List list2 = organizationService.orgTree(search);
-        System.out.println(JSON.toJSONString(list2));
     }
 
     @Test
@@ -118,6 +115,18 @@ public class UserApplicationTests {
         boolean matchFlag = hcm.doCredentialsMatch(token, authenticationInfo);
 
         System.out.println(matchFlag);
+    }
+
+    @Test
+    public void testMenuDept() {
+        Integer depth = menuService.getMenuDepth(new Menu().setParentId(701010201L), 0);
+        System.out.println(depth);
+    }
+
+    @Test
+    public void testCheckedMenus() {
+        Set<Long> list = menuService.getMenuCheckedIds(19L);
+        log.info(list.toString());
     }
 
 }

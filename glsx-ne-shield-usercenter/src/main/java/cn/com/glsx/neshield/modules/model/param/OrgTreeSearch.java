@@ -18,6 +18,8 @@ public class OrgTreeSearch {
 
     private String orgName;
 
+    private Integer enableStatus;
+
     private Collection<Long> orgIds;
 
     private Integer rolePermissionType;

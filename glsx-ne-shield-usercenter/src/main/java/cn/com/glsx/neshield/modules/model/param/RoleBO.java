@@ -1,12 +1,10 @@
 package cn.com.glsx.neshield.modules.model.param;
 
-import cn.com.glsx.admin.common.util.RegexUtil;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.List;
@@ -21,7 +19,6 @@ public class RoleBO implements Serializable {
     private Long roleId;
 
     @NotBlank
-    @Pattern(regexp = RegexUtil.roleNameRegex, message = "名称格式有误")
     @Size(max = 50)
     private String roleName;
 

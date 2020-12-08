@@ -1,5 +1,7 @@
 package cn.com.glsx.neshield.modules.controller;
 
+import cn.com.glsx.admin.common.constant.UserConstants;
+import cn.com.glsx.auth.utils.ShieldContextHolder;
 import cn.com.glsx.neshield.common.exception.UserCenterException;
 import cn.com.glsx.neshield.modules.model.param.RoleBO;
 import cn.com.glsx.neshield.modules.model.param.RoleSearch;
@@ -12,13 +14,18 @@ import com.glsx.plat.common.enums.OperateType;
 import com.glsx.plat.context.utils.validator.AssertUtils;
 import com.glsx.plat.core.web.R;
 import com.glsx.plat.exception.SystemMessage;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
+import static cn.com.glsx.admin.common.constant.UserConstants.RoleVisibility.onlyAdmin;
 import static cn.com.glsx.admin.common.constant.UserConstants.adminRoleId;
 
 /**
@@ -43,6 +50,25 @@ public class RoleController {
     @GetMapping("/simplelist")
     public R simplelist() {
         List<SimpleRoleDTO> list = roleService.simpleList();
+        return R.ok().data(list);
+    }
+
+    @GetMapping("/visibility")
+    public R visibility() {
+        List<UserConstants.RoleVisibility> vList = Arrays.asList(UserConstants.RoleVisibility.values());
+        List<Map<String, Object>> list = Lists.newArrayList();
+        vList.forEach(rv -> {
+            Map<String, Object> map = Maps.newHashMap();
+            map.put("code", rv.getCode());
+            map.put("value", rv.getValue());
+            if (ShieldContextHolder.isSuperAdmin()) {
+                list.add(map);
+            } else {
+                if (!onlyAdmin.getCode().equals(rv.getCode())) {
+                    list.add(map);
+                }
+            }
+        });
         return R.ok().data(list);
     }
 

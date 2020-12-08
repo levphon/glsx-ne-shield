@@ -5,7 +5,6 @@ import com.glsx.plat.common.utils.HttpUtils;
 import com.glsx.plat.sms.properties.SMSProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -42,7 +41,7 @@ public class SmsUtils {
 //    @Async
     public void send(String phone, String content, String source) {
 
-        TreeMap<String, String> treeMap = new TreeMap<>();
+        TreeMap<String, Object> treeMap = new TreeMap<>();
         treeMap.put("method", "glsx.message.sendmessage");
         treeMap.put("format", "json");
         treeMap.put("akey", properties.getAccessKeyId());
@@ -59,9 +58,8 @@ public class SmsUtils {
 
         String url = properties.getUrl();
         log.info("短信接口：" + url);
-        HttpUtils httpUtils = new HttpUtils();
         try {
-            String res = httpUtils.get(url, treeMap);
+            String res = HttpUtils.get(url, treeMap);
             log.info("Result:" + res);
 
             if (StringUtils.isNotEmpty(res)) {
@@ -72,7 +70,7 @@ public class SmsUtils {
                     JSONObject jsonObject = JSONObject.parseObject(res);
                     String code = jsonObject.getString("code");
                     if (!"0".equals(code)) {
-                        res = httpUtils.get(url, treeMap);
+                        res = HttpUtils.get(url, treeMap);
                         log.info("Failure resend result:" + res);
                     }
                 }
@@ -80,11 +78,13 @@ public class SmsUtils {
                 log.error("短信服务不可用，返回为空");
             }
         } catch (IllegalStateException ex) {
-            if (StringUtils.isNotEmpty(url)) log.error("IllegalStateException", ex);
+            if (StringUtils.isNotEmpty(url)) {
+                log.error("IllegalStateException", ex);
+            }
         } catch (Exception ex) {
             log.error("SendSmsException", ex);
             try {
-                String res1 = httpUtils.get(url, treeMap);
+                String res1 = HttpUtils.get(url, treeMap);
                 log.info("Exception resend result:" + res1);
             } catch (Exception e) {
                 log.error("ReSendSmsException", ex);

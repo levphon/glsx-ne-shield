@@ -15,6 +15,8 @@ public interface RoleMapper extends CommonBaseMapper<Role> {
 
     List<Role> selectList(RoleSearch search);
 
+    List<Role> selectVisibilityList(RoleSearch search);
+
     /**
      * 根据roleIds获取角色列表
      *
@@ -43,6 +45,8 @@ public interface RoleMapper extends CommonBaseMapper<Role> {
     Role selectByName(@Param("roleName") String roleName);
 
     List<Role> selectByVisibilityType(@Param("roleVisibility") Integer roleVisibility);
+
+    List<Long> selectRoleIdsByVisibilityType(@Param("roleVisibility") Integer roleVisibility);
 
     List<Role> selectByTenantIds(@Param("tenantIds") List<Long> tenantIds);
 

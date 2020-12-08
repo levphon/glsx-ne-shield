@@ -17,11 +17,13 @@
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-context</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-alliance</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>

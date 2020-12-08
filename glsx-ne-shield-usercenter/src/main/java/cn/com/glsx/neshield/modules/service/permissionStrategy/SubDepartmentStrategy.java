@@ -9,7 +9,6 @@ import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.DepartmentMapper;
 import cn.com.glsx.neshield.modules.mapper.OrganizationMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
-import cn.com.glsx.neshield.modules.model.OrgSuperiorModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -48,17 +46,12 @@ public class SubDepartmentStrategy extends PermissionStrategy {
 
         Long departmentId = ShieldContextHolder.getDepartmentId();
 
-        //获取下属部门
-        List<OrgModel> modelList = organizationMapper.selectOrgList(new OrgTreeSearch().setTenantId(ShieldContextHolder.getTenantId()));
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).collect(Collectors.toList());
+        List<Organization> subOrgList = organizationMapper.selectAllSubBySuperiorId(departmentId);
 
-        List<Long> subOrgIdList = Lists.newArrayList();
-        TreeModelUtil.findChildrenIds(departmentId, orgTreeModelList, subOrgIdList);
+        List<Long> subOrgIdList = subOrgList.stream().map(Organization::getSubId).collect(Collectors.toList());
+
         List<Department> list = departmentMapper.selectByIds(subOrgIdList);
 
-        //本部门
-        Department department = departmentMapper.selectById(departmentId);
-        list.add(department);
         log.info("用户{} {}部门数为{}", ShieldContextHolder.getAccount(), UserConstants.RolePermitCastType.subDepartment.getValue(), list.size());
         return list;
     }
@@ -96,7 +89,7 @@ public class SubDepartmentStrategy extends PermissionStrategy {
             Department department = departmentMapper.selectById(userDeptId);
             departmentParamList.add(department);
         } else {
-            List<Organization> organizationList = organizationMapper.selectSubList(Lists.newArrayList(rootId), 1);
+            List<Organization> organizationList = organizationMapper.selectSubOrgList(Lists.newArrayList(rootId), 1);
 
             if (CollectionUtils.isNotEmpty(organizationList)) {
                 List<Long> departmentIdList = organizationList.stream().map(Organization::getSubId).collect(Collectors.toList());
@@ -121,11 +114,11 @@ public class SubDepartmentStrategy extends PermissionStrategy {
 
         search.setTenantId(tenantId);
 
-        search.setOrgId(deptId);
+        List<Department> subDepartmentList = this.permissionDepartments();
 
-        List<OrgSuperiorModel> superiorModelList = organizationMapper.selectSuperiorIdsByOrg(search);
-        Set<Long> ids = getSuperiorIds(superiorModelList);
-        search.setOrgIds(ids);
+        List<Long> subDepartmentIdList = subDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
+
+        search.setOrgIds(subDepartmentIdList);
 
         List<OrgModel> modelList = organizationMapper.selectOrgList(search);
 
@@ -146,7 +139,7 @@ public class SubDepartmentStrategy extends PermissionStrategy {
             }
         });
 
-        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByDepth(orgTreeModelList, 0);
+        List<? extends TreeModel> orgTree = TreeModelUtil.fastConvertByRootMark(orgTreeModelList, 1);
 
         return orgTree;
     }

@@ -29,6 +29,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.*;
@@ -64,7 +65,7 @@ public class MenuService {
         } else {
             page = PageHelper.startPage(1, Short.MAX_VALUE);
         }
-        List<MenuDTO> menuDTOList = menuMapper.selectList(search);
+        List<MenuDTO> menuDTOList = menuMapper.selectDTOList(search);
         menuDTOList.forEach(m -> {
             int cnt = menuMapper.selectChildrenCntByParentId(m.getMenuNo());
             m.setHasChildren(cnt > 0);
@@ -82,7 +83,7 @@ public class MenuService {
     }
 
     public List<MenuDTO> children(Long parentId) {
-        List<Menu> menuList = menuMapper.selectMenuListByParentId(parentId);
+        List<Menu> menuList = menuMapper.selectByParentId(parentId);
         List<MenuDTO> list = new ArrayList<>(menuList.size());
         for (Menu menu : menuList) {
             MenuDTO menuDTO = MenuConverter.INSTANCE.do2dto(menu);
@@ -139,10 +140,23 @@ public class MenuService {
         return menuTree;
     }
 
-    public List<Long> getMenuCheckedIds(Long editRoleId) {
+    public Set<Long> getMenuCheckedIds(Long editRoleId) {
         List<MenuModel> permMenuList = menuMapper.selectMenuPermTree(new MenuTreeSearch().setRoleIds(Lists.newArrayList(editRoleId)).setMenuTypes(MenuType.getAllTypes()));
-        List<Long> menuIds = permMenuList.stream().map(MenuModel::getMenuNo).distinct().collect(Collectors.toList());
-        return menuIds;
+        Set<Long> permMenuIds = permMenuList.stream().map(MenuModel::getMenuNo).collect(Collectors.toSet());
+        //info(permMenuIds.toString());
+        permMenuList.forEach(pmm -> {
+            //按钮直接添加
+            if (!MenuType.BUTTON.getCode().equals(pmm.getType())) {
+                List<Menu> menuList = menuMapper.selectByParentId(pmm.getParentId());
+                List<Long> menuIds = menuList.stream().map(Menu::getMenuNo).distinct().collect(Collectors.toList());
+                boolean flag = permMenuIds.containsAll(menuIds);
+                //log.info(pmm.getMenuNo() + " " + pmm.getParentId() + " " + menuIds.toString() + " " + flag);
+                if (!flag) {
+                    permMenuIds.remove(pmm.getParentId());
+                }
+            }
+        });
+        return permMenuIds;
     }
 
     /**
@@ -183,7 +197,7 @@ public class MenuService {
      * @return
      */
     public List<Menu> getMenuList(List<Long> roleIds) {
-        return menuMapper.selectMenuList(roleIds);
+        return menuMapper.selectList(roleIds);
     }
 
     /**
@@ -203,8 +217,8 @@ public class MenuService {
             if (parentMenuNo == null || parentMenuNo == 0L) {
                 //起始编号
                 int startNo = 100;
-                List<Menu> menus = menuMapper.selectMenuListByParentId(0L);
-                long maxMenuNo = menus.stream().map(Menu::getMenuNo).mapToLong(Long::parseLong).max().orElse(0L);
+                List<Menu> menus = menuMapper.selectByParentId(0L);
+                long maxMenuNo = menus.stream().map(Menu::getMenuNo).max(Long::compareTo).orElse(0L);
                 maxMenuNo = maxMenuNo + startNo;
 
                 if (maxMenuNo <= startNo) {
@@ -213,12 +227,12 @@ public class MenuService {
                     menuNo = String.valueOf(maxMenuNo);
                 }
             } else {
-                List<Menu> menus = menuMapper.selectMenuListByParentId(parentMenuNo);
+                List<Menu> menus = menuMapper.selectByParentId(parentMenuNo);
                 if (CollectionUtils.isEmpty(menus)) {
                     menuNo = parentMenuNo + "01";
                 } else {
-                    String maxMenuNo = menus.stream().map(Menu::getMenuNo).max(Comparator.comparingLong(Long::parseLong)).orElse("0");
-                    long menuNoLong = Long.parseLong(maxMenuNo) + 1;
+                    Long maxMenuNo = menus.stream().map(Menu::getMenuNo).max(Long::compareTo).orElse(0L);
+                    long menuNoLong = maxMenuNo + 1;
                     menuNo = String.valueOf(menuNoLong);
                 }
             }
@@ -241,15 +255,23 @@ public class MenuService {
         return menuDTO;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void add(MenuBO menuBO) {
+        if (menuBO.getParentId() == null) {
+            menuBO.setParentId(0L);
+        }
+        checkAddMenu(menuBO);
+
         Menu menu = new Menu(false);
         BeanUtils.copyProperties(menuBO, menu);
 
-        Long menuNo = generateMenuNo(menu.getParentId());
-        menu.setMenuNo(String.valueOf(menuNo));
-        if (menu.getParentId() == null) {
-            menu.setParentId(0L);
+        Integer menuDept = getMenuDepth(menu, 0);
+        if (menuDept >= 3) {
+            throw new UserCenterException("目前系统菜单最大层级限制3级");
         }
+
+        Long menuNo = generateMenuNo(menu.getParentId());
+        menu.setMenuNo(menuNo);
         menuMapper.insertUseGeneratedKeys(menu);
 
         MenuPermission permission = new MenuPermission();
@@ -266,13 +288,44 @@ public class MenuService {
         }
     }
 
+    public void checkAddMenu(MenuBO menuBO) {
+        Menu menu = new Menu().setMenuName(menuBO.getMenuName()).setParentId(menuBO.getParentId());
+        int cnt = menuMapper.selectCount(menu);
+        if (cnt > 0) {
+            throw new UserCenterException("同级菜单名称已存在");
+        }
+    }
+
+    public Integer getMenuDepth(Menu menu, Integer depth) {
+        if (menu == null || menu.getParentId() == null) {
+            return 0;
+        }
+        depth++;
+        menu = menuMapper.selectByMenuNo(menu.getParentId());
+        if (menu == null || menu.getParentId() == 0) {
+            return depth;
+        }
+        return getMenuDepth(menu, depth);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public void edit(MenuBO menuBO) {
-//        Menu dbMenu = menuMapper.selectById(menu.getId());
-//        if (!dbMenu.getParentId().equals(menu.getParentId()) || !dbMenu.getType().equals(menu.getType())) {
-//        }
+        if (menuBO.getParentId() == null) {
+            menuBO.setParentId(0L);
+        }
+        checkEditMenu(menuBO);
+
         Menu menu = new Menu(false);
         BeanUtils.copyProperties(menuBO, menu);
         menuMapper.updateByPrimaryKeySelective(menu);
+    }
+
+    public void checkEditMenu(MenuBO menuBO) {
+        Menu condition = new Menu().setMenuName(menuBO.getMenuName()).setParentId(menuBO.getParentId());
+        Menu menu = menuMapper.selectOne(condition);
+        if (menu != null && !menu.getId().equals(menuBO.getId())) {
+            throw new UserCenterException("同级菜单名称已存在");
+        }
     }
 
     public List<MenuPermission> getMenuPermissions(List<Long> menuIdList) {
@@ -284,6 +337,8 @@ public class MenuService {
         log.warn("{}删除菜单{}", ShieldContextHolder.getAccount(), menu.toString());
 //        menuMapper.logicDeleteById(id);
         menuMapper.deleteByPrimaryKey(id);
+        //删除菜单和角色关系
+        roleMenuMapper.deleteByMenuNo(menu.getMenuNo());
     }
 
 }

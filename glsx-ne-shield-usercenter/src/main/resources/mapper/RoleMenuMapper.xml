@@ -4,7 +4,7 @@
     <resultMap id="BaseResultMap" type="cn.com.glsx.neshield.modules.entity.RoleMenu">
         <id column="id" jdbcType="INTEGER" property="id"/>
         <result column="role_id" jdbcType="INTEGER" property="roleId"/>
-        <result column="menu_id" jdbcType="INTEGER" property="menuId"/>
+        <result column="menu_id" jdbcType="INTEGER" property="menuNo"/>
         <result column="del_flag" jdbcType="TINYINT" property="delFlag"/>
         <result column="created_date" jdbcType="TIMESTAMP" property="createdDate"/>
         <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
@@ -58,4 +58,8 @@
     <update id="logicDelByRoleId">
         update t_role_menu set del_flag = -1 where role_id = #{roleId}
     </update>
+
+    <delete id="deleteByMenuNo">
+        delete from t_role_menu where menu_id = #{menuNo}
+    </delete>
 </mapper>

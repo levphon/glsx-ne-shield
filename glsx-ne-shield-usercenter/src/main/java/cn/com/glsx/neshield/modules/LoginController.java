@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import sun.misc.BASE64Encoder;
 
 import javax.annotation.Resource;
 import javax.imageio.ImageIO;
@@ -32,6 +31,7 @@ import javax.validation.Valid;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -79,8 +79,7 @@ public class LoginController {
         //生成图片验证码
         BufferedImage image = producer.createImage(text);
 
-        // TODO: 2020/10/29 修改成成公共服务获取验证码，目前集群多服务可能有问题
-        //保存到 session
+        //保存到 session,单机模式，集群会有问题
 //        request.getSession().setAttribute(Constants.KAPTCHA_SESSION_KEY, text);
 //        ServletOutputStream out = response.getOutputStream();
 //        ImageIO.write(image, "jpg", out);
@@ -88,7 +87,7 @@ public class LoginController {
         //输出流
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         ImageIO.write(image, "png", stream);
-        String imgBase64 = new BASE64Encoder().encode(stream.toByteArray());
+        String imgBase64 = Base64.getEncoder().encodeToString(stream.toByteArray());
         Map<String, String> captchaMap = new HashMap<>();
         captchaMap.put("text", text);
         captchaMap.put("captcha", imgBase64);
@@ -147,12 +146,12 @@ public class LoginController {
     private void verify(User user, String inputPassword) {
         //是否存在
         if (user == null) {
-            throw new UserCenterException("账号不存在");
+            throw new UserCenterException("账号或密码不正确");
         }
 
         //是否停用
         if (!SysConstants.EnableStatus.enable.getCode().equals(user.getEnableStatus())) {
-            throw new UserCenterException("账号已停用");
+            throw new UserCenterException("账号正在审核中或已停用");
         }
 
         //密码是否ok

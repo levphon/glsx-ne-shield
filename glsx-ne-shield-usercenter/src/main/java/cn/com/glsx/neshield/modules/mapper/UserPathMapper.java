@@ -11,10 +11,6 @@ import java.util.List;
 @Mapper
 public interface UserPathMapper extends CommonBaseMapper<UserPath> {
 
-    List<DepartmentUserCount> selectSubordinateDepartmentList(Long userId);
-
-    List<UserPath> selectUserSubordinateList(Long userId);
-
     /**
      * 插入根节点路径
      *
@@ -46,5 +42,29 @@ public interface UserPathMapper extends CommonBaseMapper<UserPath> {
      * @return
      */
     UserPath selectRootPathBySubId(@Param("subId") Long subId);
+
+    /**
+     * 得到用户所有上级用户（含自己）
+     *
+     * @param subId
+     * @return
+     */
+    List<UserPath> selectAllSuperiorBySubId(@Param("subId") Long subId);
+
+    /**
+     * 得到用户所有下级用户（含自己）
+     *
+     * @param superiorId
+     * @return
+     */
+    List<UserPath> selectSubordinateBySuperiorId(@Param("superiorId") Long superiorId);
+
+    /**
+     * 统计用户下级各部门用户数
+     *
+     * @param userId
+     * @return
+     */
+    List<DepartmentUserCount> selectSubordinateDepartmentList(Long userId);
 
 }

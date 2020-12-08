@@ -12,6 +12,7 @@ import cn.com.glsx.neshield.modules.mapper.UserMapper;
 import cn.com.glsx.neshield.modules.mapper.UserPathMapper;
 import cn.com.glsx.neshield.modules.model.OrgModel;
 import cn.com.glsx.neshield.modules.model.OrgTreeModel;
+import cn.com.glsx.neshield.modules.model.param.DepartmentSearch;
 import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationBO;
 import cn.com.glsx.neshield.modules.model.param.UserSearch;
@@ -65,18 +66,16 @@ public class SubOrdinateStrategy extends PermissionStrategy {
         Long userId = ShieldContextHolder.getUserId();
 
         //获取下属部门
-        List<OrgModel> modelList = organizationMapper.selectOrgList(new OrgTreeSearch().setTenantId(ShieldContextHolder.getTenantId()));
-        List<OrgTreeModel> orgTreeModelList = modelList.stream().map(OrgTreeModel::new).collect(Collectors.toList());
+        List<Organization> subOrgList = organizationMapper.selectAllSubBySuperiorId(departmentId);
 
-        List<Long> subOrgIdList = Lists.newArrayList();
-        TreeModelUtil.findChildrenIds(departmentId, orgTreeModelList, subOrgIdList);
-        subOrgIdList.add(departmentId);
+        List<Long> subOrgIdList = subOrgList.stream().map(Organization::getSubId).collect(Collectors.toList());
 
         List<User> list = userMapper.selectDepartmentsSubordinate(new UserSearch().setUserId(userId).setDepartmentIdList(subOrgIdList));
 
         //本人
         User user = userMapper.selectById(userId);
         list.add(user);
+
         log.info("用户{} {}用户数为{}", ShieldContextHolder.getAccount(), UserConstants.RolePermitCastType.subordinate.getValue(), list.size());
         return list;
     }
@@ -114,15 +113,19 @@ public class SubOrdinateStrategy extends PermissionStrategy {
                     .setBiggerDepth(1));
             List<Long> subIdList = childrenOrgList.stream().map(Organization::getSubId).collect(Collectors.toList());
 
+            //加入用户部门
             subIdList.add(userDeptId);
 
             if (subIdList.contains(rootId)) {
-                List<Organization> subOrganizationList = organizationMapper.selectSubList(Lists.newArrayList(rootId), 1);
+                List<Organization> subOrganizationList = organizationMapper.selectSubOrgList(Lists.newArrayList(rootId), 1);
 
                 List<Long> departmentIdList = subOrganizationList.stream().map(Organization::getSubId).collect(Collectors.toList());
 
-                List<Department> departmentList = departmentMapper.selectByIds(departmentIdList);
+                List<Department> departmentList = Lists.newArrayList();
 
+                if (CollectionUtils.isNotEmpty(departmentIdList)) {
+                    departmentList = departmentMapper.selectByIds(departmentIdList);
+                }
                 departmentParamList.addAll(departmentList);
             }
         }
@@ -156,24 +159,17 @@ public class SubOrdinateStrategy extends PermissionStrategy {
 
         //下级部门id
         List<Long> subDepartmentIdList = departmentUserCountList.stream()
-                .filter(duc -> duc.getDepartmentId() != null)
-                .map(DepartmentUserCount::getDepartmentId)
-                .collect(Collectors.toList());
+                .filter(duc -> duc.getDepartmentId() != null).map(DepartmentUserCount::getDepartmentId).collect(Collectors.toList());
 
         //模糊搜索得到的部门
-        List<Department> namedDepartmentList = departmentMapper.selectDepartmentList(new Department()
+        List<Department> namedDepartmentList = departmentMapper.search(new DepartmentSearch()
                 .setTenantId(tenantId)
                 .setDepartmentName(search.getOrgName()));
 
         //提取符合搜索条件的部门
-        List<Department> finalNamedDepartmentList = Lists.newArrayList();
-        for (Department department : namedDepartmentList) {
-            if (subDepartmentIdList.contains(department.getId())) {
-                finalNamedDepartmentList.add(department);
-            }
-        }
+        List<Department> finalNamedDepartmentList = namedDepartmentList.stream().filter(department -> subDepartmentIdList.contains(department.getId())).collect(Collectors.toList());
 
-        //符合条件的部门idlist
+        //符合条件的部门idList
         List<Long> nameDepartmentIdList = finalNamedDepartmentList.stream().map(Department::getId).collect(Collectors.toList());
 
         List<Organization> superiorOrgList = organizationMapper.selectList(new OrganizationBO().setSubIdList(nameDepartmentIdList));
@@ -185,8 +181,13 @@ public class SubOrdinateStrategy extends PermissionStrategy {
         List<Department> allDepartmentList = departmentMapper.selectByIds(allDepartmentIdList);
         //所有组织链
         List<Organization> organizationList = organizationMapper.selectList(new OrganizationBO().setSubIdList(allDepartmentIdList).setSuperiorIdList(allDepartmentIdList));
+
         //根节点
-        List<Organization> rootList = organizationMapper.selectRootIdList(nameDepartmentIdList);
+        List<Organization> rootList = Lists.newArrayList();
+
+        if (CollectionUtils.isNotEmpty(nameDepartmentIdList)) {
+            rootList = organizationMapper.selectRootIdList(nameDepartmentIdList);
+        }
 
         Set<Long> rootIds = rootList.stream().map(Organization::getSuperiorId).collect(Collectors.toSet());
 

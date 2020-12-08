@@ -37,6 +37,11 @@ public class MenuTreeModel implements TreeModel<MenuModel> {
     }
 
     @Override
+    public Integer isRoot() {
+        return 0;
+    }
+
+    @Override
     public Integer getDepth() {
         return null;
     }

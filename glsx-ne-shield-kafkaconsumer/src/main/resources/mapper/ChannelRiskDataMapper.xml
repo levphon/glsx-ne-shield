@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.glsx.kafka.mapper.ChannelRiskDataMapper">
+  <resultMap id="BaseResultMap" type="cn.com.glsx.kafka.entity.ChannelRiskData">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="workorder_no" jdbcType="VARCHAR" property="workorderNo" />
+    <result column="owner_name" jdbcType="VARCHAR" property="ownerName" />
+    <result column="vin" jdbcType="VARCHAR" property="vin" />
+    <result column="sn" jdbcType="VARCHAR" property="sn" />
+    <result column="active_date" jdbcType="TIMESTAMP" property="activeDate" />
+    <result column="dev_type" jdbcType="INTEGER" property="devType" />
+    <result column="gps_time" jdbcType="TIMESTAMP" property="gpsTime" />
+    <result column="lng" jdbcType="DOUBLE" property="lng" />
+    <result column="lat" jdbcType="DOUBLE" property="lat" />
+    <result column="prov" jdbcType="VARCHAR" property="prov" />
+    <result column="city" jdbcType="VARCHAR" property="city" />
+    <result column="zone" jdbcType="VARCHAR" property="zone" />
+    <result column="address" jdbcType="VARCHAR" property="address" />
+    <result column="shop_name" jdbcType="VARCHAR" property="shopName" />
+    <result column="labels" jdbcType="VARCHAR" property="labels" />
+    <result column="type" jdbcType="TINYINT" property="type" />
+    <result column="radius" jdbcType="INTEGER" property="radius" />
+    <result column="district" jdbcType="VARCHAR" property="district" />
+    <result column="street" jdbcType="VARCHAR" property="street" />
+    <result column="street_number" jdbcType="VARCHAR" property="streetNumber" />
+    <result column="center_lat" jdbcType="DOUBLE" property="centerLat" />
+    <result column="center_lng" jdbcType="DOUBLE" property="centerLng" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    id, workorder_no, owner_name, vin, sn, active_date, dev_type, gps_time, lng, lat, 
+    prov, city, `zone`, address, shop_name, labels, `type`, radius, district, street, 
+    street_number, center_lat, center_lng
+  </sql>
+</mapper>

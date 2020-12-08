@@ -12,7 +12,6 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
-import java.util.Map;
 
 @Mapper
 public interface OrganizationMapper extends CommonBaseMapper<Organization> {
@@ -50,7 +49,7 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
     List<OrgSuperiorModel> selectSuperiorIdsByOrg(OrgTreeSearch search);
 
     /**
-     * 获取组织机构
+     * 获取组织机构列表，含父级id
      *
      * @param search
      * @return
@@ -58,12 +57,38 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
     List<OrgModel> selectOrgList(OrgTreeSearch search);
 
     /**
-     * 找到所有子节点
+     * 得到上级节点,depth为层级
      *
-     * @param organizationId
+     * @param superiorId
+     * @param depth
      * @return
      */
-    List<Organization> selectByRootId(Long organizationId);
+    Organization selectSuperiorOrgByDepth(@Param("superiorId") Long superiorId, Integer depth);
+
+    /**
+     * 查找确定深度的子节点列表
+     *
+     * @param superiorIds
+     * @param depth
+     * @return
+     */
+    List<Organization> selectSubOrgList(@Param("superiorIds") List<Long> superiorIds, @Param("depth") Integer depth);
+
+    /**
+     * 得到所有上级（包括自己）
+     *
+     * @param subId
+     * @return
+     */
+    List<Organization> selectAllSuperiorBySubId(@Param("subId") Long subId);
+
+    /**
+     * 得到所有子节点（包括自己）
+     *
+     * @param superiorId
+     * @return
+     */
+    List<Organization> selectAllSubBySuperiorId(@Param("superiorId") Long superiorId);
 
     /**
      * 找到根节点list
@@ -90,14 +115,6 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
     Organization selectRootPathBySubId(@Param("subId") Long subId);
 
     /**
-     * 得到上级节点
-     *
-     * @param organizationId
-     * @return
-     */
-    Organization selectSuperiorOrganization(Long organizationId);
-
-    /**
      * 逻辑删除
      *
      * @param subId
@@ -122,13 +139,6 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
      */
     List<Department> selectChildrenList(OrganizationSearch organizationSearch);
 
-    /**
-     * 查找确定深度的子节点列表
-     *
-     * @param departmentIds
-     * @return
-     */
-    List<Organization> selectSubList(@Param("departmentIds") List<Long> departmentIds, @Param("depth") Integer depth);
 
     /**
      * 根据条件筛选符合的路径
@@ -137,14 +147,5 @@ public interface OrganizationMapper extends CommonBaseMapper<Organization> {
      * @return
      */
     List<Organization> selectList(OrganizationBO organizationBO);
-
-    /**
-     * @param rootId
-     * @param subId
-     * @return
-     */
-    Organization selectRootByRootIdAndSubId(@Param("rootId") Long rootId, @Param("subId") Long subId);
-
-    List<Organization> selectAllSuperiorBySubId(@Param("subId") Long subId);
 
 }

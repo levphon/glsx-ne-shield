@@ -35,7 +35,7 @@
         </foreach>
     </update>
 
-    <select id="selectDepartmentList" resultMap="BaseResultMap">
+    <select id="search" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
         from t_department
@@ -52,6 +52,13 @@
         <if test="isRoot != null">
             and is_root = #{isRoot}
         </if>
+        <if test="orgIds != null and orgIds.size() > 0">
+            and id in
+            <foreach collection="orgIds" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        order by order_num
     </select>
 
     <select id="selectByIds" resultMap="BaseResultMap">

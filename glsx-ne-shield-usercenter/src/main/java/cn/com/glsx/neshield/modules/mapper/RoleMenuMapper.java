@@ -28,4 +28,12 @@ public interface RoleMenuMapper extends CommonBaseMapper<RoleMenu> {
      */
     int logicDelByRoleId(Long roleId);
 
+    /**
+     * 物理删除
+     *
+     * @param menuNo
+     * @return
+     */
+    int deleteByMenuNo(Long menuNo);
+
 }

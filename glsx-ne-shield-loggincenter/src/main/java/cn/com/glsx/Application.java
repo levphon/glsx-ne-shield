@@ -3,6 +3,7 @@ package cn.com.glsx;
 import com.glsx.plat.context.EnableRestAdmin;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.EnableMBeanExport;
@@ -22,7 +23,7 @@ import static java.util.TimeZone.getTimeZone;
 @EnableFeignClients(basePackages = {"cn.com.glsx.*.api"})
 @EnableDiscoveryClient
 @EnableMBeanExport(registration = RegistrationPolicy.IGNORE_EXISTING)
-@SpringBootApplication(scanBasePackages = {"cn.com.glsx.loggin", "cn.com.glsx.auth"})
+@SpringBootApplication(scanBasePackages = {"cn.com.glsx.loggin", "cn.com.glsx.auth"}, exclude = {DataSourceAutoConfiguration.class})
 public class Application {
 
     public static void main(String[] args) {

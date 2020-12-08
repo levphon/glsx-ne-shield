@@ -22,10 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author: taoyr
@@ -89,7 +86,7 @@ public class MenuController extends BaseController {
     @GetMapping("/checkedtree")
     public R getMenuFullTree(@RequestParam(value = "roleId", required = false) Long roleId) {
         List<MenuModel> menuTree = menuService.getMenuFullTreeWithChecked(ShieldContextHolder.getRoleIds(), roleId);
-        List<Long> checkedIds = menuService.getMenuCheckedIds(roleId);
+        Set<Long> checkedIds = menuService.getMenuCheckedIds(roleId);
 
         Map<String, Object> rtnMap = new HashMap<>();
         rtnMap.put("menuTree", menuTree);

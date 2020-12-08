@@ -27,6 +27,11 @@ public enum FunctionPermissionType {
     ORG_ADD(2, "usercenter:org:add", "新增组织"),
     ORG_EDIT(3, "usercenter:org:edit", "编辑组织"),
     ORG_DELETE(4, "usercenter:org:delete", "删除组织"),
+
+    DEVICE_QUERY(1, "ordercenter:device:query", "查询设备"),
+    DEVICE_ADD(2, "ordercenter:device:add", "新增设备"),
+    DEVICE_EDIT(3, "ordercenter:device:edit", "编辑设备"),
+    DEVICE_DELETE(4, "ordercenter:device:delete", "删除设备"),
     ;
 
     FunctionPermissionType(int code, String name, String desc) {

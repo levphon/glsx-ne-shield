@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DictDataService implements InitializingBean {
@@ -82,15 +83,35 @@ public class DictDataService implements InitializingBean {
         if (CollectionUtils.isNotEmpty(dictDatas)) {
             return dictDatas;
         }
-        dictDatas = dataMapper.selectByTypeWithDeleted(dictType);
-        if (CollectionUtils.isNotEmpty(dictDatas)) {
-            dictDatas.forEach(dd -> {
-                boolean disabled = !SysConstants.DeleteStatus.normal.getCode().equals(dd.getDelFlag())
-                        || !SysConstants.EnableStatus.enable.getCode().equals(dd.getEnableStatus());
-                dd.setDisabled(disabled);
-            });
-            dictUtils.setDictCache(dictType, dictDatas);
-            return dictDatas;
+        SysDictType type = typeMapper.selectByTypeWithDeleted(dictType);
+        Optional<SysDictType> typeOpt = Optional.ofNullable(type);
+        if (typeOpt.isPresent()) {
+            dictDatas = dataMapper.selectByTypeWithDeleted(dictType);
+            if (CollectionUtils.isNotEmpty(dictDatas)) {
+                boolean typeDisabled = !SysConstants.EnableStatus.enable.getCode().equals(type.getEnableStatus());
+                boolean typeDeleted = SysConstants.DeleteStatus.delete.getCode().equals(type.getDelFlag());
+                dictDatas.forEach(dd -> {
+                    boolean disabled = !SysConstants.EnableStatus.enable.getCode().equals(dd.getEnableStatus());
+                    boolean deleted = SysConstants.DeleteStatus.delete.getCode().equals(dd.getDelFlag());
+                    //字典数据停用
+                    dd.setDisabled(disabled);
+                    //字典数据删除
+                    dd.setDeleted(deleted);
+
+                    //字典类型停用
+                    if (typeDisabled) {
+                        dd.setTypeDisabled(typeDisabled);
+                        dd.setDisabled(typeDisabled);
+                    }
+                    //字典类型删除
+                    if (typeDeleted) {
+                        dd.setTypeDeleted(typeDeleted);
+                        dd.setDeleted(typeDeleted);
+                    }
+                });
+                dictUtils.setDictCache(dictType, dictDatas);
+                return dictDatas;
+            }
         }
         return Lists.newArrayList();
     }
@@ -153,7 +174,7 @@ public class DictDataService implements InitializingBean {
         SysDictData dbData = dataMapper.selectOne(condition);
         if (dbData != null) {
             boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbData.getDelFlag());
-            throw BusinessException.create("字典数据已存在" + (delFlag ? "，但处于删除状态" : ""));
+            throw BusinessException.create("字典数据键值已存在" + (delFlag ? "，但处于删除状态" : ""));
         }
     }
 
@@ -165,7 +186,7 @@ public class DictDataService implements InitializingBean {
         SysDictData dbData = dataMapper.selectOne(condition);
         if (dbData != null && !dbData.getId().equals(data.getId())) {
             boolean delFlag = SysConstants.DeleteStatus.delete.getCode().equals(dbData.getDelFlag());
-            throw BusinessException.create("字典数据已存在" + (delFlag ? "，但处于删除状态" : ""));
+            throw BusinessException.create("字典数据键值已存在" + (delFlag ? "，但处于删除状态" : ""));
         }
     }
 

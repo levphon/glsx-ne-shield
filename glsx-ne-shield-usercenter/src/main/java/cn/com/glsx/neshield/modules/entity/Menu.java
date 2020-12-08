@@ -31,7 +31,7 @@ public class Menu extends BaseEntity {
      * 菜单no
      */
     @Column(name = "menu_no")
-    private String menuNo;
+    private Long menuNo;
 
     /**
      * 菜单名

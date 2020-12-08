@@ -1,7 +1,8 @@
 package cn.com.glsx.auth.interceptor;
 
-import cn.com.glsx.auth.model.RequireDataPermissions;
 import cn.com.glsx.auth.utils.ShieldContextHolder;
+import com.glsx.plat.common.annotation.DataPerm;
+import com.glsx.plat.common.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
@@ -10,7 +11,6 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
-import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.executor.statement.RoutingStatementHandler;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.sql.Connection;
-import java.util.List;
+import java.util.Set;
 
 import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.*;
 
@@ -61,25 +61,39 @@ public class DataPermissionInterceptor implements Interceptor {
     private static final ObjectWrapperFactory DEFAULT_OBJECT_WRAPPER_FACTORY = new DefaultObjectWrapperFactory();
     private static final ReflectorFactory REFLECTOR_FACTORY = new DefaultReflectorFactory();
 
+    private final static String MAPPEDSTATEMENT_NAME = "delegate.mappedStatement";
+
+    private final static String BOUNDSQL_NAME = "delegate.boundSql";
+
+    private final static String BOUNDSQL_SQL_NAME = "delegate.boundSql.sql";
+
+    private final static String SQL_PARAM_NAME = "delegate.parameterHandler.parameterObject";
+
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
 
         Object target = invocation.getTarget();
-
         if (target instanceof RoutingStatementHandler) {
             try {
                 RoutingStatementHandler statementHandler = (RoutingStatementHandler) target;
+
                 // MetaObject是mybatis里面提供的一个工具类，类似反射的效果
                 MetaObject metaStatementHandler = MetaObject.forObject(statementHandler,
                         DEFAULT_OBJECT_FACTORY,
                         DEFAULT_OBJECT_WRAPPER_FACTORY,
                         REFLECTOR_FACTORY);
 
-                MappedStatement mappedStatement = (MappedStatement) metaStatementHandler.getValue("delegate.mappedStatement");
+                MappedStatement mappedStatement = (MappedStatement) metaStatementHandler.getValue(MAPPEDSTATEMENT_NAME);
+
+                //当前拦截器只处理查询数据权限
+                SqlCommandType sqlCommandType = mappedStatement.getSqlCommandType();
+                if (sqlCommandType != SqlCommandType.SELECT) {
+                    return invocation.proceed();
+                }
 
                 //没自定义注解直接按通过
-                RequireDataPermissions dataPermissions = getDataPerm(mappedStatement);
-                if (dataPermissions == null) {
+                DataPerm dataAuth = getDataPerm(mappedStatement);
+                if (dataAuth == null) {
                     return invocation.proceed();
                 }
 
@@ -88,23 +102,17 @@ public class DataPermissionInterceptor implements Interceptor {
                     return invocation.proceed();
                 }
 
-                SqlCommandType sqlCommandType = mappedStatement.getSqlCommandType();
-//                if (sqlCommandType == SqlCommandType.SELECT) {
-//                    return invocation.proceed();
-//                }
+                //拼装sql
+                BoundSql boundSql = (BoundSql) metaStatementHandler.getValue(BOUNDSQL_NAME);
+                String originSql = boundSql.getSql(); //获取到当前需要被执行的SQL
+                String authSql = assemblePermitSql(originSql, dataAuth); //进行数据权限过滤组装
+                log.info("\nbaseSql:{}\nauthSql:{}", originSql, authSql);
 
-                //拼装sql(这里是关键！！！)
-//                BoundSql boundSql = (BoundSql) metaStatementHandler.getValue("delegate.boundSql");
-//                String originSql = boundSql.getSql(); //获取到当前需要被执行的SQL
-//                String authSql = makeSql(originSql, dataPermissions); //进行数据权限过滤组装
-//                //替换
+                //替换
 //                MappedStatement newStatement = newMappedStatement(mappedStatement, new BoundSqlSqlSource(boundSql));
 //                MetaObject msObject = MetaObject.forObject(newStatement, new DefaultObjectFactory(), new DefaultObjectWrapperFactory(), new DefaultReflectorFactory());
-//                msObject.setValue("sqlSource.boundSql.sql", authSql);
-////                invocation.getArgs()[0] = newStatement;
-//                log.debug("baseSql:{} authSql:{}", originSql, authSql);
-//
-//                MapperMethod.ParamMap paramMap = (MapperMethod.ParamMap) boundSql.getParameterObject();
+
+                metaStatementHandler.setValue(BOUNDSQL_SQL_NAME, authSql);
             } catch (Exception e) {
                 log.error("数据权限拦截器异常", e);
                 throw e;
@@ -121,19 +129,19 @@ public class DataPermissionInterceptor implements Interceptor {
      * @return
      * @throws ClassNotFoundException
      */
-    private RequireDataPermissions getDataPerm(MappedStatement mappedStatement) throws ClassNotFoundException {
-        RequireDataPermissions dataPermissions = null;
+    private DataPerm getDataPerm(MappedStatement mappedStatement) throws ClassNotFoundException {
+        DataPerm dataPerm = null;
         String id = mappedStatement.getId();
         String className = id.substring(0, id.lastIndexOf("."));
         String methodName = id.substring(id.lastIndexOf(".") + 1);
-        final Method[] method = Class.forName(className).getMethods();
+        final Method[] method = Class.forName(className).getDeclaredMethods();
         for (Method me : method) {
-            if (me.getName().equals(methodName) && me.isAnnotationPresent(RequireDataPermissions.class)) {
-                dataPermissions = me.getAnnotation(RequireDataPermissions.class);
+            if (me.getName().equals(methodName) && me.isAnnotationPresent(DataPerm.class)) {
+                dataPerm = me.getAnnotation(DataPerm.class);
                 break;
             }
         }
-        return dataPermissions;
+        return dataPerm;
     }
 
     /**
@@ -144,7 +152,7 @@ public class DataPermissionInterceptor implements Interceptor {
      * @return
      * @throws JSQLParserException
      */
-    private String makeSql(String sql, RequireDataPermissions dataAuth) throws JSQLParserException {
+    private String assemblePermitSql(String sql, DataPerm dataAuth) throws JSQLParserException {
         CCJSqlParserManager parserManager = new CCJSqlParserManager();
         Select select = (Select) parserManager.parse(new StringReader(sql));
         PlainSelect plain = (PlainSelect) select.getSelectBody();
@@ -152,22 +160,31 @@ public class DataPermissionInterceptor implements Interceptor {
         //有别名用别名，无别名用表名，防止字段冲突报错
         String mainTableName = fromItem.getAlias() == null ? fromItem.getName() : fromItem.getAlias().getName();
 
-        List<Long> creatorIds = ShieldContextHolder.getCreatorIds();
+        Set<Long> deptIds = ShieldContextHolder.getVisibleDeptIds();
+        Set<Long> creatorIds = ShieldContextHolder.getVisibleCreatorIds();
 
-        log.info(creatorIds.toString());
+        String linkTable = dataAuth.linkTable();
+        String linkField = dataAuth.linkField();
 
-        Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
+        String deptIdsStr = StringUtils.join(deptIds, ',');
+        String creatorIdsStr = StringUtils.join(creatorIds, ',');
+
+        log.info("deptIds:{}", deptIdsStr);
+        log.info("creatorIds:{}", creatorIdsStr);
 
         String dataAuthSql = "";
         //构建子查询
+        Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
         if (oneself.getCode().equals(rolePermissionType)) {
-            dataAuthSql = mainTableName + ".created_by = " + ShieldContextHolder.getUserId();
+            dataAuthSql = mainTableName + ".created_by in (" + creatorIdsStr + ") ";
         } else if (subordinate.getCode().equals(rolePermissionType)) {
-            dataAuthSql = mainTableName + ".created_by in (" + ShieldContextHolder.getCreatorIds() + ") ";
+            dataAuthSql = mainTableName + ".created_by in (" + creatorIdsStr + ") ";
         } else if (selfDepartment.getCode().equals(rolePermissionType)) {
-            dataAuthSql = mainTableName + ".created_by in (" + ShieldContextHolder.getCreatorIds() + ") ";
+            //dataAuthSql = mainTableName + ".created_by in (select " + linkTable + "." + linkField + " from " + linkTable + " where " + linkTable + ".department_id = " + ShieldContextHolder.getDepartmentId() + ") ";
+            dataAuthSql = mainTableName + ".created_by in (" + creatorIdsStr + ") ";
         } else if (subDepartment.getCode().equals(rolePermissionType)) {
-            dataAuthSql = mainTableName + ".created_by in (" + ShieldContextHolder.getCreatorIds() + ") ";
+            //dataAuthSql = mainTableName + ".created_by in (select " + linkTable + "." + linkField + " from " + linkTable + " where " + linkTable + ".department_id in (" + ShieldContextHolder.getVisibleCreatorDeptIds() + ")) ";
+            dataAuthSql = mainTableName + ".created_by in (" + creatorIdsStr + ") ";
         } else if (all.getCode().equals(rolePermissionType)) {
             //do nothing
         }
@@ -182,8 +199,7 @@ public class DataPermissionInterceptor implements Interceptor {
     }
 
     private MappedStatement newMappedStatement(MappedStatement ms, SqlSource newSqlSource) {
-        MappedStatement.Builder builder =
-                new MappedStatement.Builder(ms.getConfiguration(), ms.getId(), newSqlSource, ms.getSqlCommandType());
+        MappedStatement.Builder builder = new MappedStatement.Builder(ms.getConfiguration(), ms.getId(), newSqlSource, ms.getSqlCommandType());
         builder.resource(ms.getResource());
         builder.fetchSize(ms.getFetchSize());
         builder.statementType(ms.getStatementType());

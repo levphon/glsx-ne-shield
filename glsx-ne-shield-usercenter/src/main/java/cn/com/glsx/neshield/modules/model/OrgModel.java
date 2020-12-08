@@ -10,6 +10,7 @@ public class OrgModel {
     private String orgName;
     private Long parentId;
     private Long tenantId;
+    private Integer isRoot;
 
     @JsonIgnore
     private Integer depth;

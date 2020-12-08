@@ -3,6 +3,7 @@ package cn.com.glsx.neshield.modules.controller;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.service.DepartmentService;
+import com.github.pagehelper.PageInfo;
 import com.glsx.plat.core.web.R;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
-import java.util.List;
 
 /**
  * @author payu
@@ -29,8 +29,8 @@ public class TenantController {
                 .setForPage(false)
                 .setHasChild(false)
                 .setHasUserNumber(false);
-        List<DepartmentDTO> list = departmentService.rootDepartmentList(search);
-        return R.ok().data(list);
+        PageInfo<DepartmentDTO> pageInfo = departmentService.rootDepartmentList(search);
+        return R.ok().data(pageInfo.getList());
     }
 
 }

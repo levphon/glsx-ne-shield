@@ -7,14 +7,21 @@ import cn.com.glsx.neshield.modules.entity.Organization;
 import cn.com.glsx.neshield.modules.entity.Role;
 import cn.com.glsx.neshield.modules.entity.User;
 import cn.com.glsx.neshield.modules.mapper.*;
+import cn.com.glsx.neshield.modules.model.OrgSuperiorModel;
+import cn.com.glsx.neshield.modules.model.param.DepartmentSearch;
+import cn.com.glsx.neshield.modules.model.param.OrgTreeSearch;
 import cn.com.glsx.neshield.modules.model.param.OrganizationSearch;
 import cn.com.glsx.neshield.modules.model.view.DepartmentCount;
 import cn.com.glsx.neshield.modules.model.view.DepartmentDTO;
 import cn.com.glsx.neshield.modules.model.view.DepartmentUserCount;
+import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +29,7 @@ import javax.annotation.Resource;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static cn.com.glsx.admin.common.constant.UserConstants.RolePermitCastType.*;
@@ -42,9 +50,6 @@ public class DepartmentService {
     private RoleMapper roleMapper;
 
     @Resource
-    private UserService userService;
-
-    @Resource
     private UserPathMapper userPathMapper;
 
     @Resource
@@ -55,76 +60,57 @@ public class DepartmentService {
      *
      * @return
      */
-    public List<Department> getCurrentUserDepartment() {
+    public List<Department> getCurrentUserDepartments() {
+        Long roleId = ShieldContextHolder.getRoleId();
+        Long userId = ShieldContextHolder.getUserId();
+        List<Long> departmentIdList = getRoleDepartment(userId, roleId);
+
+        return Lists.newArrayList();
+    }
+
+    /**
+     * 获取当前用户权限所拥有的部门
+     *
+     * @return
+     */
+    public List<Long> getCurrentUserDepartmentIds() {
         Long roleId = ShieldContextHolder.getRoleId();
         Long userId = ShieldContextHolder.getUserId();
         return getRoleDepartment(userId, roleId);
     }
 
-    /**
-     * 获取用户所拥有的部门权限
-     *
-     * @param userId
-     * @return
-     */
-    public List<Department> getUserDepartment(Long userId) {
-        List<Role> roles = roleMapper.selectUserRoleList(userId);
-        if (CollectionUtils.isEmpty(roles)) {
-            return Lists.newArrayList();
-        }
-        return getRoleDepartment(userId, roles.get(0).getId());
-    }
-
-    public List<Department> getRoleDepartment(Long userId, Long roleId) {
-        List<Department> departmentList = Lists.newArrayList();
+    public List<Long> getRoleDepartment(Long userId, Long roleId) {
+        List<Long> departmentIdList = Lists.newArrayList();
 
         Role role = roleMapper.selectById(roleId);
         if (role == null) {
-            return departmentList;
+            return departmentIdList;
         }
 
         if (oneself.getCode().equals(role.getRolePermissionType())) {
             User user = userMapper.selectById(userId);
-            Long departmentId = user.getDepartmentId();
 
-            Department department = departmentMapper.selectById(departmentId);
-            departmentList.add(department);
-
-            return departmentList;
+            departmentIdList.add(user.getDepartmentId());
         } else if (all.getCode().equals(role.getRolePermissionType())) {
-            return departmentMapper.selectAllNotDel();
+            List<Department> deptList = departmentMapper.selectAllNotDel();
+
+            departmentIdList = deptList.stream().map(Department::getId).collect(Collectors.toList());
         } else if (selfDepartment.getCode().equals(role.getRolePermissionType())) {
             User user = userMapper.selectById(userId);
-            Long departmentId = user.getDepartmentId();
 
-            Department department = departmentMapper.selectById(departmentId);
-            departmentList.add(department);
-
-            return departmentList;
+            departmentIdList.add(user.getDepartmentId());
         } else if (subDepartment.getCode().equals(role.getRolePermissionType())) {
             User user = userMapper.selectById(userId);
 
-            Long departmentId = user.getDepartmentId();
+            List<Organization> subOrgList = organizationMapper.selectAllSubBySuperiorId(user.getDepartmentId());
 
-            List<Organization> organizationList = organizationMapper.selectByRootId(departmentId);
-
-            List<Long> departmentIds = organizationList.stream().map(Organization::getSubId).collect(Collectors.toList());
-
-            return departmentMapper.selectByIds(departmentIds);
+            departmentIdList = subOrgList.stream().map(Organization::getSubId).collect(Collectors.toList());
         } else if (subordinate.getCode().equals(role.getRolePermissionType())) {
-
             List<DepartmentUserCount> departmentUserCountList = userPathMapper.selectSubordinateDepartmentList(userId);
 
-            List<Long> departmentIdList = departmentUserCountList.stream().map(DepartmentUserCount::getDepartmentId).collect(Collectors.toList());
-
-            return departmentMapper.selectByIds(departmentIdList);
-        } else {
-            return departmentList;
+            departmentIdList = departmentUserCountList.stream().map(DepartmentUserCount::getDepartmentId).collect(Collectors.toList());
         }
-    }
-
-    public Department getDepartmentById(Long departmentId) {
-        return departmentMapper.selectById(departmentId);
+        return departmentIdList;
     }
 
     /**
@@ -133,34 +119,107 @@ public class DepartmentService {
      * @param search
      * @return
      */
-    public List<DepartmentDTO> rootDepartmentList(OrganizationSearch search) {
+    public PageInfo<DepartmentDTO> rootDepartmentList(OrganizationSearch search) {
         Integer rolePermissionType = ShieldContextHolder.getRolePermissionType();
 
-        List<Department> rootList = Lists.newArrayList();
+        Page page = null;
 
+        DepartmentSearch deptSearch = new DepartmentSearch()
+                .setEnableStatus(search.getEnableStatus())
+                .setDepartmentName(search.getOrgName())
+                .setIsRoot(Constants.IS_ROOT_DEPARTMENT);
+
+        //非admin和授权全部数据的用户只能看到自己所在的组织
         if (!ShieldContextHolder.isRoleAdmin() && !all.getCode().equals(rolePermissionType)) {
-            //只能看自己公司的
-            Long rootDepartmentId = ShieldContextHolder.getTenantId();
+            deptSearch.setTenantId(ShieldContextHolder.getTenantId());
+        }
 
-            Department department = departmentMapper.selectById(rootDepartmentId);
+        // 2020/12/4 模糊搜索
+        Set<Long> superiorIds = Sets.newHashSet();
+        if (StringUtils.isNotEmpty(search.getOrgName())) {
+            //得到模糊查询得到的部门的所有上级id
+            List<OrgSuperiorModel> orgSuperiorModelList = organizationMapper.selectSuperiorIdsByOrg(new OrgTreeSearch()
+                    .setTenantId(deptSearch.getTenantId())
+                    .setOrgName(deptSearch.getDepartmentName())
+                    .setEnableStatus(deptSearch.getEnableStatus()));
+            superiorIds = getSuperiorIds(orgSuperiorModelList);
 
-            rootList.add(department);
+            //置空模糊查询条件，根据上级id查根组织
+            deptSearch.setOrgIds(superiorIds).setDepartmentName(null);
+        }
+
+        if (search.isForPage()) {
+            page = PageHelper.startPage(search.getPageNumber(), search.getPageSize());
+        }
+
+        List<Department> rootList = null;
+        if (StringUtils.isNotEmpty(search.getOrgName()) && CollectionUtils.isEmpty(superiorIds)) {
+            //如果模糊查询结果为空，根组织也不返回
+            rootList = Lists.newArrayList();
         } else {
-            Department department = new Department()
-                    .setIsRoot(Constants.IS_ROOT_DEPARTMENT)
-                    .setEnableStatus(search.getEnableStatus())
-                    .setDepartmentName(search.getOrgName());
-            department.setDelFlag(0);
-
-            if (search.isForPage()) {
-                PageHelper.startPage(search.getPageNumber(), search.getPageSize());
-            }
-            rootList = departmentMapper.selectDepartmentList(department);
+            rootList = departmentMapper.search(deptSearch);
         }
 
         List<DepartmentDTO> departmentDTOList = getDepartmentAssembled(rootList, search.isHasChild(), search.isHasUserNumber());
 
+        PageInfo<DepartmentDTO> pageInfo = new PageInfo<>(departmentDTOList);
+        if (search.isForPage()) {
+            pageInfo.setPages(page.getPages());//总页数
+            pageInfo.setTotal(page.getTotal());//总条数
+        }
+        return pageInfo;
+    }
+
+    public List<DepartmentDTO> childrenList(OrganizationSearch search) {
+
+        Department department = departmentMapper.selectById(search.getRootId());
+
+        // 2020/12/4 模糊搜索
+        if (StringUtils.isNotEmpty(search.getOrgName())) {
+            //得到模糊查询得到的部门的所有上级id
+            List<OrgSuperiorModel> orgSuperiorModelList = organizationMapper.selectSuperiorIdsByOrg(new OrgTreeSearch()
+                    .setTenantId(department.getTenantId())
+                    .setOrgName(search.getOrgName())
+                    .setEnableStatus(search.getEnableStatus()));
+            Set<Long> superiorIds = getSuperiorIds(orgSuperiorModelList);
+
+            //置空模糊查询条件，根据上级id查根组织
+            search.setTenantId(department.getTenantId()).setOrgIds(superiorIds).setOrgName(null);
+        }
+
+        List<Department> departmentList = organizationMapper.selectChildrenList(search);
+
+        List<DepartmentDTO> departmentDTOList = this.getDepartmentAssembled(departmentList, true, false);
+
+        if (ShieldContextHolder.isRoleAdmin() || all.getCode().equals(ShieldContextHolder.getRolePermissionType())) {
+            return departmentDTOList;
+        }
+
+        //下面代码控制角色的可见权限
+        List<Long> departmentIdList = this.getCurrentUserDepartmentIds();
+
+        departmentDTOList = departmentDTOList.stream().filter(d -> departmentIdList.contains(d.getId())).collect(Collectors.toList());
+
         return departmentDTOList;
+    }
+
+    /**
+     * 获取上级组织id
+     *
+     * @param superiorModelList
+     * @return
+     */
+    public Set<Long> getSuperiorIds(List<OrgSuperiorModel> superiorModelList) {
+        Set<Long> superiorIds = Sets.newHashSet();
+        superiorModelList.forEach(osm -> {
+            if (com.glsx.plat.common.utils.StringUtils.isNotEmpty(osm.getSuperiorIds())) {
+                String[] ids = osm.getSuperiorIds().split(",");
+                for (String id : ids) {
+                    superiorIds.add(Long.valueOf(id));
+                }
+            }
+        });
+        return superiorIds;
     }
 
     /**
@@ -184,7 +243,7 @@ public class DepartmentService {
 
         if (CollectionUtils.isNotEmpty(departmentIds)) {
             if (hasChild) {
-                List<Organization> organizationList = organizationMapper.selectSubList(departmentIds, 1);
+                List<Organization> organizationList = organizationMapper.selectSubOrgList(departmentIds, 1);
 
                 Map<Long, List<Long>> subOrganizationMap = organizationList.stream().collect(Collectors.toMap(Organization::getSuperiorId, org -> Lists.newArrayList(org.getSubId()),
                         (List<Long> newValueList, List<Long> oldValueList) -> {
@@ -215,19 +274,27 @@ public class DepartmentService {
      */
     public Map<Long, Integer> countRecursiveDepartmentUser(List<Long> departmentIds) {
         HashMap<Long, Integer> departmentUserMap = Maps.newHashMap();
+        //只得到存在下级的组织
+        List<Organization> allSubList = organizationMapper.selectSubOrgList(departmentIds, null);
 
-        List<Organization> allSubList = organizationMapper.selectSubList(departmentIds, null);
+        Map<Long, List<Long>> subDepartmentIdListMap = allSubList.stream().collect(Collectors.groupingBy(Organization::getSuperiorId))
+                .entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().stream().map(Organization::getSubId)
+                        .collect(Collectors.toList())));
 
-        Map<Long, List<Long>> departmentSubIdListMap = allSubList.stream().collect(Collectors.groupingBy(Organization::getSuperiorId))
-                .entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().stream().map(Organization::getSubId).collect(Collectors.toList())));
+        //加上没有下级的组织
+        departmentIds.forEach(item -> {
+            if (!subDepartmentIdListMap.containsKey(item)) {
+                subDepartmentIdListMap.put(item, Lists.newArrayList());
+            }
+        });
 
         List<Long> subDepartmentIdList = allSubList.stream().map(Organization::getSubId).distinct().collect(Collectors.toList());
 
-        List<DepartmentCount> departmentCountList = userService.countDepartmentUserNumber(subDepartmentIdList);
+        List<DepartmentCount> departmentCountList = userMapper.countDepartmentsUser(subDepartmentIdList);
 
         Map<Long, Integer> departmentUserNumberMap = departmentCountList.stream().collect(Collectors.toMap(DepartmentCount::getDepartmentId, DepartmentCount::getUserNumber));
 
-        for (Map.Entry<Long, List<Long>> entry : departmentSubIdListMap.entrySet()) {
+        for (Map.Entry<Long, List<Long>> entry : subDepartmentIdListMap.entrySet()) {
             Long parentId = entry.getKey();
             List<Long> subIdList = entry.getValue();
 
@@ -246,30 +313,4 @@ public class DepartmentService {
         return departmentUserMap;
     }
 
-
-    /**
-     * 统计部门及下级部门用户数
-     *
-     * @param departmentId
-     * @return
-     */
-    public Integer countRecursiveDepartmentUser(Long departmentId) {
-        List<Organization> subList = organizationMapper.selectSubList(Lists.newArrayList(departmentId), null);
-
-        List<Long> subDepartmentIdList = subList.stream().map(Organization::getSubId).distinct().collect(Collectors.toList());
-
-        List<DepartmentCount> departmentCountList = userService.countDepartmentUserNumber(subDepartmentIdList);
-
-        Map<Long, Integer> departmentUserNumberMap = departmentCountList.stream().collect(Collectors.toMap(DepartmentCount::getDepartmentId, DepartmentCount::getUserNumber));
-
-        Integer departmentUserNumber = 0;
-
-        for (Map.Entry<Long, Integer> entry : departmentUserNumberMap.entrySet()) {
-            Integer userNumber = entry.getValue();
-
-            departmentUserNumber += userNumber;
-        }
-
-        return departmentUserNumber;
-    }
 }

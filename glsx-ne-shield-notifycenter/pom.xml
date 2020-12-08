@@ -17,26 +17,31 @@
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-context</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-alliance</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-sms</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-mail</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-wechat</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>
@@ -48,11 +53,13 @@
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-kafka</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>
             <artifactId>rest-admin-im</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.glsx</groupId>

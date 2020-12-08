@@ -22,6 +22,9 @@ public class DictDataDTO implements Serializable {
     private String remark;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date createdDate;
+    private boolean typeDisabled;
     private boolean disabled;
+    private boolean typeDeleted;
+    private boolean deleted;
 
 }
